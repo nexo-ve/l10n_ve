@@ -148,6 +148,42 @@ class TestAccountMoveLine(L10nVeSeniatCommon):
         self.assertEqual(len(line.tax_ids), 1)
         self.assertEqual(line.tax_ids, self.company_data["default_tax_purchase"])
 
+    def test_vendor_bill_keeps_selected_tax_without_product(self):
+        supplier = self.env["res.partner"].create(
+            {
+                "name": "Supplier tax free line",
+                "country_id": self.env.ref("base.ve").id,
+                "vat": "J87654321",
+            }
+        )
+        purchase_tax = self.company_data["default_tax_purchase"]
+        move = self.env["account.move"].create(
+            {
+                "move_type": "in_invoice",
+                "partner_id": supplier.id,
+                "invoice_date": fields.Date.today(),
+                "invoice_line_ids": [
+                    Command.create(
+                        {
+                            "name": "Servicio sin producto",
+                            "quantity": 1.0,
+                            "price_unit": 100.0,
+                            "account_id": self.company_data[
+                                "default_account_expense"
+                            ].id,
+                            "tax_ids": [Command.set([purchase_tax.id])],
+                        }
+                    )
+                ],
+            }
+        )
+        line = move.invoice_line_ids.filtered(lambda aml: aml.display_type == "product")
+        self.assertFalse(line.product_id)
+        self.assertEqual(line.tax_ids, purchase_tax)
+        line.write({"tax_ids": [Command.set([purchase_tax.id])]})
+        self.assertEqual(line.tax_ids, purchase_tax)
+        self.assertFalse(line._l10n_ve_must_use_exempt_tax())
+
     def test_subtotal_refund(self):
         partner = self.env["res.partner"].create(
             {"name": "P", "country_id": self.env.ref("base.ve").id, "vat": "J12345678"}

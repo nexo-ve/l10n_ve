@@ -172,6 +172,11 @@
                 <field name="expression_label">iva_retained</field>
                 <field name="figure_type">monetary</field>
             </record>
+            <record id="sales_book_report_igtf" model="account.report.column">
+                <field name="name">IGTF</field>
+                <field name="expression_label">igtf</field>
+                <field name="figure_type">monetary</field>
+            </record>
             <record
                 id="sales_book_report_third_party_name"
                 model="account.report.column"

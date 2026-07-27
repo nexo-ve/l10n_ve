@@ -388,6 +388,35 @@ export class TfhkaFiscalMachine {
         };
     }
 
+    _formatLineDiscountCommand(item, config) {
+        const discountAmount = asNumber(item.discount_amount, 0);
+        if (discountAmount <= 0) {
+            return null;
+        }
+        const [amountI, amountD] = this.splitAmount(
+            this._limitDecimals(discountAmount, config.discDecimal),
+            config.discDecimal
+        );
+        return `p-${amountI.padStart(config.discInt, "0")}${amountD.padStart(
+            config.discDecimal,
+            "0"
+        )}`;
+    }
+
+    _formatGlobalDiscountCommand(amount, config) {
+        if (amount <= 0) {
+            return null;
+        }
+        const [amountI, amountD] = this.splitAmount(
+            this._limitDecimals(amount, config.discDecimal),
+            config.discDecimal
+        );
+        return `q-${amountI.padStart(config.discInt, "0")}${amountD.padStart(
+            config.discDecimal,
+            "0"
+        )}`;
+    }
+
     _normalizeAccountMoveInvoiceLines(move) {
         const lines = move.invoice_lines || move.invoiceLineIds || move.invoice_line_ids || [];
         const out = [];
@@ -401,6 +430,7 @@ export class TfhkaFiscalMachine {
                 quantity: asNumber(line.quantity, 0),
                 price_unit: asNumber(line.price_unit, 0),
                 discount: asNumber(line.discount, 0),
+                discount_amount: asNumber(line.discount_amount, 0),
                 tax: mapTaxCodeFromLine(line),
             });
         }
@@ -421,6 +451,10 @@ export class TfhkaFiscalMachine {
                 options.aditional_lines || options.additional_lines || move.aditional_lines
             ),
             has_cashbox: Boolean(options.has_cashbox || move.has_cashbox),
+            global_discount_amount: asNumber(
+                options.global_discount_amount ?? move.global_discount_amount,
+                0
+            ),
             invoice_affected: options.invoice_affected || move.invoice_affected || null,
             barcode: options.barcode || move.barcode || null,
         };
@@ -603,20 +637,21 @@ export class TfhkaFiscalMachine {
                 if (lineDiscount) {
                     discount += lineDiscount;
                 }
-                if (asNumber(item.discount, 0) > 0) {
-                    const [amountI, amountD] = this.splitAmount(
-                        this._limitDecimals(item.discount, config.discDecimal),
-                        config.discDecimal
-                    );
-                    cmd.push(
-                        `p-${amountI.padStart(config.discInt, "0")}${amountD.padStart(
-                            config.discDecimal,
-                            "0"
-                        )}`
-                    );
+                const discountCmd = this._formatLineDiscountCommand(item, config);
+                if (discountCmd) {
+                    cmd.push(discountCmd);
                 }
             }
             cmd.push("3");
+            const globalDiscountAmount =
+                discount + asNumber(invoice.global_discount_amount, 0);
+            const globalDiscountCmd = this._formatGlobalDiscountCommand(
+                globalDiscountAmount,
+                config
+            );
+            if (globalDiscountCmd) {
+                cmd.push(globalDiscountCmd);
+            }
             const paymentLines = this._appendGroupedPaymentCommands(
                 cmd,
                 invoice.payment_lines,
@@ -679,19 +714,21 @@ export class TfhkaFiscalMachine {
                 if (discount) {
                     discountAmount += discount;
                 }
+                const discountCmd = this._formatLineDiscountCommand(item, config);
+                if (discountCmd) {
+                    cmd.push(discountCmd);
+                }
             }
             cmd.push("3");
-            if (discountAmount > 0) {
-                const [amountI, amountD] = this.splitAmount(
-                    this._limitDecimals(discountAmount, config.discDecimal),
-                    config.discDecimal
-                );
-                cmd.push(
-                    `q-${amountI.padStart(config.discInt, "0")}${amountD.padStart(
-                        config.discDecimal,
-                        "0"
-                    )}`
-                );
+            const globalDiscountAmount =
+                discountAmount +
+                asNumber(invoice.global_discount_amount, 0);
+            const globalDiscountCmd = this._formatGlobalDiscountCommand(
+                globalDiscountAmount,
+                config
+            );
+            if (globalDiscountCmd) {
+                cmd.push(globalDiscountCmd);
             }
             const paymentLines = this._appendGroupedPaymentCommands(
                 cmd,
@@ -757,33 +794,23 @@ export class TfhkaFiscalMachine {
                 if (discount) {
                     discountAmount += discount;
                 }
-                if (asNumber(item.discount, 0) > 0) {
-                    const [amountI, amountD] = this.splitAmount(
-                        this._limitDecimals(item.discount, config.discDecimal),
-                        config.discDecimal
-                    );
-                    cmd.push(
-                        `p-${amountI.padStart(config.discInt, "0")}${amountD.padStart(
-                            config.discDecimal,
-                            "0"
-                        )}`
-                    );
+                const discountCmd = this._formatLineDiscountCommand(item, config);
+                if (discountCmd) {
+                    cmd.push(discountCmd);
                 }
             }
 
             cmd.push("3");
 
-            if (discountAmount > 0) {
-                const [amountI, amountD] = this.splitAmount(
-                    this._limitDecimals(discountAmount, config.discDecimal),
-                    config.discDecimal
-                );
-                cmd.push(
-                    `q-${amountI.padStart(config.discInt, "0")}${amountD.padStart(
-                        config.discDecimal,
-                        "0"
-                    )}`
-                );
+            const globalDiscountAmount =
+                discountAmount +
+                asNumber(invoice.global_discount_amount, 0);
+            const globalDiscountCmd = this._formatGlobalDiscountCommand(
+                globalDiscountAmount,
+                config
+            );
+            if (globalDiscountCmd) {
+                cmd.push(globalDiscountCmd);
             }
 
             const paymentLines = this._appendGroupedPaymentCommands(

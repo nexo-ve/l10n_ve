@@ -247,6 +247,8 @@ class AccountVeReportXHandler(models.AbstractModel):
                     move.date,
                 )
             n = len(registered)
+            if not n:
+                continue
             total_ops += n
             total_cash += subtotal
             add_row(
@@ -293,10 +295,14 @@ class AccountVeReportXHandler(models.AbstractModel):
             level=1,
         )
         company = main_company
-        if hasattr(company, "general_aliquot_sale") and company.general_aliquot_sale:
-            g = company.general_aliquot_sale
+        TaxGroup = self.env["account.tax.group"]
+        tax_config = TaxGroup._l10n_ve_build_tax_config(company)
+        if "general" in tax_config:
+            percent = TaxGroup._l10n_ve_get_tax_rate_for_type(
+                company, "general", "sale"
+            )
             add_row(
-                _("Base imponible — alícuota general (%(p)s%%)", p=g.amount),
+                _("Base imponible — alícuota general (%(p)s%%)", p=percent),
                 "",
                 sale_agg["base_general"],
                 level=1,
@@ -311,10 +317,12 @@ class AccountVeReportXHandler(models.AbstractModel):
             add_row(_("Base imponible — alícuota general"), "", sale_agg["base_general"], level=1)
             add_row(_("IVA — general"), "", sale_agg["amount_general"], level=1)
 
-        if hasattr(company, "reduced_aliquot_sale") and company.reduced_aliquot_sale:
-            r = company.reduced_aliquot_sale
+        if "reduced" in tax_config:
+            percent = TaxGroup._l10n_ve_get_tax_rate_for_type(
+                company, "reduced", "sale"
+            )
             add_row(
-                _("Base imponible — alícuota reducida (%(p)s%%)", p=r.amount),
+                _("Base imponible — alícuota reducida (%(p)s%%)", p=percent),
                 "",
                 sale_agg["base_reduced"],
                 level=1,
@@ -329,10 +337,12 @@ class AccountVeReportXHandler(models.AbstractModel):
             add_row(_("Base imponible — reducida"), "", sale_agg["base_reduced"], level=1)
             add_row(_("IVA — reducida"), "", sale_agg["amount_reduced"], level=1)
 
-        if hasattr(company, "extend_aliquot_sale") and company.extend_aliquot_sale:
-            e = company.extend_aliquot_sale
+        if "extend" in tax_config:
+            percent = TaxGroup._l10n_ve_get_tax_rate_for_type(
+                company, "extend", "sale"
+            )
             add_row(
-                _("Base imponible — alícuota adicional (%(p)s%%)", p=e.amount),
+                _("Base imponible — alícuota adicional (%(p)s%%)", p=percent),
                 "",
                 sale_agg["base_extend"],
                 level=1,
@@ -368,10 +378,12 @@ class AccountVeReportXHandler(models.AbstractModel):
             debit_agg["total_exempt"],
             level=1,
         )
-        if hasattr(company, "general_aliquot_sale") and company.general_aliquot_sale:
-            g = company.general_aliquot_sale
+        if "general" in tax_config:
+            percent = TaxGroup._l10n_ve_get_tax_rate_for_type(
+                company, "general", "sale"
+            )
             add_row(
-                _("Base imponible — alícuota general (%(p)s%%) (ND)", p=g.amount),
+                _("Base imponible — alícuota general (%(p)s%%) (ND)", p=percent),
                 "",
                 debit_agg["base_general"],
                 level=1,
@@ -391,10 +403,12 @@ class AccountVeReportXHandler(models.AbstractModel):
             )
             add_row(_("IVA — general (ND)"), "", debit_agg["amount_general"], level=1)
 
-        if hasattr(company, "reduced_aliquot_sale") and company.reduced_aliquot_sale:
-            r = company.reduced_aliquot_sale
+        if "reduced" in tax_config:
+            percent = TaxGroup._l10n_ve_get_tax_rate_for_type(
+                company, "reduced", "sale"
+            )
             add_row(
-                _("Base imponible — alícuota reducida (%(p)s%%) (ND)", p=r.amount),
+                _("Base imponible — alícuota reducida (%(p)s%%) (ND)", p=percent),
                 "",
                 debit_agg["base_reduced"],
                 level=1,
@@ -414,10 +428,12 @@ class AccountVeReportXHandler(models.AbstractModel):
             )
             add_row(_("IVA — reducida (ND)"), "", debit_agg["amount_reduced"], level=1)
 
-        if hasattr(company, "extend_aliquot_sale") and company.extend_aliquot_sale:
-            e = company.extend_aliquot_sale
+        if "extend" in tax_config:
+            percent = TaxGroup._l10n_ve_get_tax_rate_for_type(
+                company, "extend", "sale"
+            )
             add_row(
-                _("Base imponible — alícuota adicional (%(p)s%%) (ND)", p=e.amount),
+                _("Base imponible — alícuota adicional (%(p)s%%) (ND)", p=percent),
                 "",
                 debit_agg["base_extend"],
                 level=1,

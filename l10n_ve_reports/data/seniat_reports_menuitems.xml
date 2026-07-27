@@ -9,6 +9,22 @@
         groups="account.group_account_readonly"
     />
     <menuitem
+        id="menu_seniat_report_bank_book"
+        name="Libro de Banco"
+        action="action_account_report_bank_book"
+        parent="l10n_ve_seniat.menu_seniat_reports"
+        sequence="55"
+        groups="account.group_account_readonly"
+    />
+    <menuitem
+        id="menu_seniat_report_cash_book"
+        name="Libro de Caja"
+        action="action_account_report_cash_book"
+        parent="l10n_ve_seniat.menu_seniat_reports"
+        sequence="56"
+        groups="account.group_account_readonly"
+    />
+    <menuitem
         id="menu_seniat_report_diary_book"
         name="Libro Diario"
         action="action_account_report_diary_book"

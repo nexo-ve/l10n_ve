@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <record id="l10n_ve_discount_reason_default" model="l10n.ve.discount.reason">
+        <field name="name">Descuento</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="l10n_ve_discount_reason_early_payment" model="l10n.ve.discount.reason">
+        <field name="name">Pronto pago</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="l10n_ve_discount_reason_foreign_currency" model="l10n.ve.discount.reason">
+        <field name="name">Pago en divisas</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="l10n_ve_discount_reason_commercial" model="l10n.ve.discount.reason">
+        <field name="name">Descuento comercial</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="l10n_ve_discount_reason_commercial_adjustment" model="l10n.ve.discount.reason">
+        <field name="name">Ajuste comercial</field>
+        <field name="sequence">50</field>
+    </record>
+</odoo>

@@ -1,0 +1,108 @@
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
+from odoo.tests import tagged
+
+from odoo.addons.l10n_ve_seniat.tests.common import L10nVeSeniatCommon
+
+
+@tagged("post_install", "-at_install")
+class TestAccountMoveFiscalDiscount(L10nVeSeniatCommon):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.partner_ve = cls.env["res.partner"].create(
+            {
+                "name": "Partner fiscal discount",
+                "country_id": cls.env.ref("base.ve").id,
+                "vat": "J12345678",
+            }
+        )
+
+    def _create_invoice(self, discount=0.0):
+        return self.env["account.move"].create(
+            {
+                "move_type": "out_invoice",
+                "partner_id": self.partner_ve.id,
+                "invoice_line_ids": [
+                    (
+                        0,
+                        0,
+                        {
+                            "name": "Product line",
+                            "quantity": 1.0,
+                            "price_unit": 100.0,
+                            "discount": discount,
+                            "account_id": self.company_data[
+                                "default_account_revenue"
+                            ].id,
+                            "tax_ids": [
+                                (6, 0, [self.company_data["default_tax_sale"].id])
+                            ],
+                        },
+                    )
+                ],
+            }
+        )
+
+    def test_fiscal_payload_line_discount_amount(self):
+        move = self._create_invoice(discount=10.0)
+        lines = move._l10n_ve_fiscal_serial_invoice_lines_payload()
+        self.assertEqual(len(lines), 1)
+        line = lines[0]
+        self.assertAlmostEqual(line["discount"], 10.0, places=2)
+        self.assertGreater(line["discount_amount"], 0.0)
+        self.assertAlmostEqual(line["discount_amount"], 10.0, places=2)
+        tax_totals = move.tax_totals
+        self.assertAlmostEqual(
+            line["discount_amount"],
+            tax_totals["l10n_ve_line_discount_amount"],
+            places=2,
+        )
+
+    def test_fiscal_payload_without_line_discount(self):
+        move = self._create_invoice(discount=0.0)
+        lines = move._l10n_ve_fiscal_serial_invoice_lines_payload()
+        self.assertEqual(len(lines), 1)
+        self.assertAlmostEqual(lines[0]["discount_amount"], 0.0, places=2)
+
+    def _get_discount_reason(self):
+        reason = self.env["l10n.ve.discount.reason"].search([], limit=1)
+        if not reason:
+            reason = self.env["l10n.ve.discount.reason"].create({"name": "Descuento"})
+        return reason
+
+    def test_fiscal_payload_keeps_gross_price_with_global_discount(self):
+        move = self._create_invoice(discount=10.0)
+        reason = self._get_discount_reason()
+        self.env["l10n.ve.account.move.discount"].create(
+            {
+                "move_id": move.id,
+                "reason_id": reason.id,
+                "amount": 9.0,
+                "discount_type": "percentage",
+                "discount_percentage": 0.1,
+            }
+        )
+        lines = move._l10n_ve_fiscal_serial_invoice_lines_payload()
+        self.assertAlmostEqual(lines[0]["price_unit"], 100.0, places=2)
+        self.assertAlmostEqual(lines[0]["discount"], 10.0, places=2)
+
+    def test_fiscal_payload_includes_global_discount_amount(self):
+        move = self._create_invoice(discount=0.0)
+        reason = self._get_discount_reason()
+        self.env["l10n.ve.account.move.discount"].create(
+            {
+                "move_id": move.id,
+                "reason_id": reason.id,
+                "amount": 10.0,
+                "discount_type": "fixed",
+            }
+        )
+        payload = move._l10n_ve_fiscal_serial_base_payload()
+        self.assertAlmostEqual(payload["global_discount_amount"], 10.0, places=2)
+        tax_totals = move.tax_totals
+        self.assertAlmostEqual(
+            payload["global_discount_amount"],
+            tax_totals["l10n_ve_global_discount_amount"],
+            places=2,
+        )

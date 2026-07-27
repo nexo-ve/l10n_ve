@@ -128,31 +128,35 @@ class TestCreditDebitButtonScenarios(L10nVeSeniatCommon):
         )
 
     def _aliquot_taxes(self):
+        TaxGroup = self.env["account.tax.group"]
         company = self.env.company
-        return [
-            company.exent_aliquot_sale,
-            company.reduced_aliquot_sale,
-            company.general_aliquot_sale,
-            company.extend_aliquot_sale,
-        ]
+        taxes = []
+        for group in TaxGroup._l10n_ve_get_report_tax_groups(company):
+            tax = group._l10n_ve_get_representative_tax("sale")
+            if tax:
+                taxes.append(tax)
+        return taxes
 
     def _resolve_aliquot_taxes(self):
         company = self.env.company
         Tax = self.env["account.tax"]
-        specs = [
-            (company.exent_aliquot_sale, 0.0),
-            (company.reduced_aliquot_sale, 8.0),
-            (company.general_aliquot_sale, 16.0),
-            (company.extend_aliquot_sale, 31.0),
-        ]
+        TaxGroup = self.env["account.tax.group"]
+        amount_by_type = {
+            "exempt": 0.0,
+            "reduced": 8.0,
+            "general": 16.0,
+            "extend": 31.0,
+        }
         resolved = []
-        for tax, amount in specs:
-            if not tax:
+        for group in TaxGroup._l10n_ve_get_report_tax_groups(company):
+            report_type = group._l10n_ve_get_report_type()
+            tax = group._l10n_ve_get_representative_tax("sale")
+            if not tax and report_type:
                 tax = Tax.search(
                     [
                         ("company_id", "=", company.id),
                         ("type_tax_use", "=", "sale"),
-                        ("amount", "=", amount),
+                        ("amount", "=", amount_by_type.get(report_type, 0.0)),
                     ],
                     limit=1,
                 )

@@ -1,9 +1,8 @@
 /** @odoo-module **/
 
-import { Component, useState } from "@odoo/owl";
-import { registry } from "@web/core/registry";
+import { Component, onWillUnmount, useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
-import { Layout } from "@web/search/layout";
+import { createFiscalSerialAuditLogger } from "../fiscal_serial/fiscal_serial_audit";
 
 const TFHKA_COMMAND_DELAY_MS = 200;
 
@@ -14,16 +13,20 @@ const PHASE = {
     ERROR: "error",
 };
 
-export class FiscalMachinesAction extends Component {
-    static template = "l10n_ve_fiscal_serial.FiscalMachinesAction";
-    static components = { Layout };
-    static props = ["*"];
+export class FiscalMachineDebugConsole extends Component {
+    static template = "l10n_ve_fiscal_serial.FiscalMachineDebugConsole";
+    static props = {
+        record: { type: Object, optional: true },
+        embedded: { type: Boolean, optional: true },
+    };
 
     setup() {
         this.fiscalSerial = useService("l10n_ve_fiscal_serial");
         this.notification = useService("notification");
         this.orm = useService("orm");
         this.ui = useService("ui");
+        const defaults = this._getRecordDefaults();
+        this.machineId = defaults.machineId;
         this.state = useState({
             phase: PHASE.DISCONNECTED,
             busy: false,
@@ -31,21 +34,53 @@ export class FiscalMachinesAction extends Component {
             commandText: "",
             lastCmdResult: "",
             logLines: [],
-            serialBaud: "9600",
-            serialParity: "even",
+            serialBaud: defaults.baud,
+            serialParity: defaults.parity,
             fpStatus: "",
             fpError: "",
             fpDescripStatus: "",
             fpDescripError: "",
             fpLrcValid: null,
-            flag21: "30",
+            flag21: defaults.flag21,
+            machineName: defaults.machineName,
+            serialPortHint: defaults.serialPort,
         });
         this.driver = null;
+        this.auditLogger = null;
         this._isUIBlocked = false;
+        onWillUnmount(() => {
+            void this._cleanupOnUnmount();
+        });
     }
 
-    get display() {
-        return { controlPanel: {} };
+    _getRecordDefaults() {
+        const record = this.props.record;
+        if (!record) {
+            return {
+                baud: "9600",
+                parity: "even",
+                flag21: "30",
+                machineId: false,
+                machineName: "",
+                serialPort: "",
+            };
+        }
+        return {
+            baud: String(record.data.baudrate || "9600"),
+            parity: record.data.parity === "none" ? "none" : record.data.parity || "even",
+            flag21: record.data.flag_21 || "30",
+            machineId: record.resId || false,
+            machineName: record.data.name || "",
+            serialPort: record.data.serial_port || "",
+        };
+    }
+
+    get embedded() {
+        return !!this.props.embedded;
+    }
+
+    get machineTitle() {
+        return this.state.machineName || "Máquinas fiscales";
     }
 
     get statusLabel() {
@@ -118,6 +153,22 @@ export class FiscalMachinesAction extends Component {
         return `Estado: ${this.state.fpStatus || "—"} (${hx}) — ${this.state.fpDescripStatus || "—"} · Error: ${this.state.fpError || "—"} — ${this.state.fpDescripError || "—"} · LRC: ${lrc}`;
     }
 
+    async _cleanupOnUnmount() {
+        if (!this.driver) {
+            return;
+        }
+        try {
+            await this.driver.closeFpCtrl({
+                reason: "user_request",
+                detail: "Salió del formulario de la máquina fiscal.",
+            });
+        } catch {
+        }
+        this.driver = null;
+        this.auditLogger = null;
+        this._clearBlockingProgress();
+    }
+
     _resetFpStatusFields() {
         this.state.fpStatus = "";
         this.state.fpError = "";
@@ -171,6 +222,11 @@ export class FiscalMachinesAction extends Component {
     }
 
     async _loadMachineConfig() {
+        if (this.props.record?.data?.flag_21) {
+            this.state.flag21 = this.props.record.data.flag_21;
+            this._log(`FLAG_21 de la máquina: ${this.state.flag21}`);
+            return { flag_21: this.state.flag21 };
+        }
         try {
             const cfg = await this.orm.call(
                 "res.company",
@@ -210,8 +266,16 @@ export class FiscalMachinesAction extends Component {
                 this.notification.add(this.state.estado, { type: "danger" });
                 return;
             }
+            if (this.state.serialPortHint) {
+                this._log(`Puerto registrado: ${this.state.serialPortHint}`);
+            }
             this._log("Web Serial OK. Se abrirá el selector de puerto del navegador");
+            this.auditLogger = createFiscalSerialAuditLogger(this.orm, {
+                source: "debug_console",
+                machineId: this.machineId,
+            });
             this.driver = this.fiscalSerial.createTfhkaFiscal();
+            this.auditLogger.attachDriver(this.driver);
             const baud = parseInt(this.state.serialBaud, 10) || 9600;
             const parity = this.state.serialParity === "none" ? "none" : "even";
             this._log(
@@ -247,6 +311,7 @@ export class FiscalMachinesAction extends Component {
                 this._log(`openFpCtrl: fallo — ${detail}`);
                 this.notification.add(detail, { type: "danger" });
                 this.driver = null;
+                this.auditLogger = null;
             }
         } catch (e) {
             this.state.phase = PHASE.ERROR;
@@ -256,6 +321,7 @@ export class FiscalMachinesAction extends Component {
             this.notification.add(detail, { type: "danger" });
             this._resetFpStatusFields();
             this.driver = null;
+            this.auditLogger = null;
         } finally {
             this.state.busy = false;
         }
@@ -268,12 +334,16 @@ export class FiscalMachinesAction extends Component {
         this.state.busy = true;
         this._log("Cerrando puerto…");
         try {
-            await this.driver.closeFpCtrl();
+            await this.driver.closeFpCtrl({
+                reason: "user_request",
+                detail: "Cierre solicitado desde la consola de depuración.",
+            });
             this.state.phase = PHASE.DISCONNECTED;
             this.state.estado = "";
             this.state.lastCmdResult = "";
             this._resetFpStatusFields();
             this.driver = null;
+            this.auditLogger = null;
             this._log("Puerto cerrado");
             this.notification.add("Puerto cerrado.", { type: "success" });
         } catch (e) {
@@ -349,7 +419,7 @@ export class FiscalMachinesAction extends Component {
             }
             return;
         }
-        const lines = this.fiscalSerial.getSampleHkaInvoiceLines();
+        const lines = this.fiscalSerial.getSampleHkaInvoiceLines(this.state.flag21);
         this.state.busy = true;
         this.state.lastCmdResult = "";
         this._setBlockingProgress(0, "Imprimiendo...");
@@ -376,7 +446,7 @@ export class FiscalMachinesAction extends Component {
                     return;
                 }
             }
-            this.state.lastCmdResult = `Secuencia de prueba: ${okCount} comando(s) enviados. Si la factura no cierra en el equipo, añada totales, pagos y cierre según el manual (p. ej. 199).`;
+            this.state.lastCmdResult = `Secuencia de prueba: ${okCount} comando(s) enviados (4 alícuotas, p- montos por línea, q- monto global tras subtotal, cierre 199).`;
             this._log("Secuencia de prueba completada (ACK en todas las líneas)");
             this.notification.add("Secuencia de prueba enviada.", { type: "success" });
         } catch (e) {
@@ -493,7 +563,7 @@ export class FiscalMachinesAction extends Component {
         this.state.lastCmdResult = "";
         this._setBlockingProgress(0, "Imprimiendo...");
         await this._loadMachineConfig();
-        this._log("Iniciar reporte X desde vista de máquina fiscal");
+        this._log("Iniciar reporte X desde consola de depuración");
         try {
             const machine = this.fiscalSerial.createTfhkaFiscalMachine(this.driver);
             const response = await machine.printXReport();
@@ -528,7 +598,7 @@ export class FiscalMachinesAction extends Component {
         this.state.lastCmdResult = "";
         this._setBlockingProgress(0, "Imprimiendo...");
         await this._loadMachineConfig();
-        this._log("Iniciar reporte Z desde vista de máquina fiscal");
+        this._log("Iniciar reporte Z desde consola de depuración");
         try {
             const machine = this.fiscalSerial.createTfhkaFiscalMachine(this.driver);
             const response = await machine.printZReport();
@@ -591,5 +661,3 @@ export class FiscalMachinesAction extends Component {
         }
     }
 }
-
-registry.category("actions").add("l10n_ve_fiscal_serial_fiscal_machines", FiscalMachinesAction);

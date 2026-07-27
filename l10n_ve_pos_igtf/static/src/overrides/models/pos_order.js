@@ -37,7 +37,7 @@ function l10nVePosPaymentMethodAppliesIgtf(order, paymentMethod) {
     if (!allowed.size) {
         return false;
     }
-    const cur = paymentMethod?.currency_pos_payment_currency_id;
+    const cur = paymentMethod?.payment_currency_id;
     const curId = typeof cur === "object" ? cur?.id : cur;
     return Boolean(curId && allowed.has(curId));
 }

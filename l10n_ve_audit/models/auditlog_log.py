@@ -50,8 +50,8 @@ class AuditlogLog(models.Model):
     def log_fiscal_event(self, record, event_type, description):
         record.ensure_one()
         model = self.env["ir.model"]._get(record._name)
-        http_request = self.env["auditlog.http.request"]
-        http_session = self.env["auditlog.http.session"]
+        http_request = self.env["auditlog.http.request"].sudo()
+        http_session = self.env["auditlog.http.session"].sudo()
         return self.sudo().create(
             {
                 "model_id": model.id,

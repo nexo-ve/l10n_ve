@@ -7,7 +7,7 @@ from odoo.tools.misc import format_date
 
 class SalesBookFiscalMachineReportCustomHandler(models.AbstractModel):
     _name = "account.sales.book.fiscal.machine.report.handler.oca"
-    _inherit = "account.report.custom.handler.oca"
+    _inherit = ["account.report.custom.handler.oca", "l10n.ve.book.report.mixin"]
     _description = "Sales Book Fiscal Machine Report Custom Handler"
 
     def _get_custom_display_config(self):
@@ -94,45 +94,12 @@ class SalesBookFiscalMachineReportCustomHandler(models.AbstractModel):
             report, options, previous_options=previous_options
         )
         options["unfold_all"] = options.get("unfold_all", True)
-
-        company = self.env.company
-        columns_to_keep = []
-        for column in options.get("columns", []):
-            col_expr_label = column.get("expression_label", "")
-            should_include = True
-
-            if col_expr_label in [
-                "tax_base_general_aliquot",
-                "general_aliquot",
-                "amount_general_aliquot",
-            ]:
-                should_include = (
-                    hasattr(company, "general_aliquot_sale")
-                    and company.general_aliquot_sale
-                )
-            elif col_expr_label in [
-                "tax_base_reduced_aliquot",
-                "reduced_aliquot",
-                "amount_reduced_aliquot",
-            ]:
-                should_include = (
-                    hasattr(company, "reduced_aliquot_sale")
-                    and company.reduced_aliquot_sale
-                )
-            elif col_expr_label in [
-                "tax_base_extend_aliquot",
-                "extend_aliquot",
-                "amount_extend_aliquot",
-            ]:
-                should_include = (
-                    hasattr(company, "extend_aliquot_sale")
-                    and company.extend_aliquot_sale
-                )
-
-            if should_include:
-                columns_to_keep.append(column)
-
-        options["columns"] = columns_to_keep
+        self._l10n_ve_prepare_book_columns(
+            options,
+            self.env.company,
+            "sale",
+            include_third_party=False,
+        )
 
     def _caret_options_initializer(self):
         return {
@@ -336,54 +303,12 @@ class SalesBookFiscalMachineReportCustomHandler(models.AbstractModel):
             return self._calculate_tax_values(move)
 
         company = move.company_id
-        tax_config = {}
-        if hasattr(company, "exent_aliquot_sale") and company.exent_aliquot_sale:
-            tax_config["exempt"] = company.exent_aliquot_sale.tax_group_id.id
-        if hasattr(company, "reduced_aliquot_sale") and company.reduced_aliquot_sale:
-            tax_config["reduced"] = company.reduced_aliquot_sale.tax_group_id.id
-        if hasattr(company, "general_aliquot_sale") and company.general_aliquot_sale:
-            tax_config["general"] = company.general_aliquot_sale.tax_group_id.id
-        if hasattr(company, "extend_aliquot_sale") and company.extend_aliquot_sale:
-            tax_config["extend"] = company.extend_aliquot_sale.tax_group_id.id
-
         sale_tax_data = move.sale_tax_data
-
-        percent_general_default = (
-            float(company.general_aliquot_sale.amount)
-            if hasattr(company, "general_aliquot_sale") and company.general_aliquot_sale
-            else 16.0
-        )
-        percent_reduced_default = (
-            float(company.reduced_aliquot_sale.amount)
-            if hasattr(company, "reduced_aliquot_sale") and company.reduced_aliquot_sale
-            else 8.0
-        )
-        percent_extend_default = (
-            float(company.extend_aliquot_sale.amount)
-            if hasattr(company, "extend_aliquot_sale") and company.extend_aliquot_sale
-            else 31.0
-        )
-
-        result = {
-            "total_taxed": sale_tax_data.get("_total_taxed", 0.0),
-            "total_exempt": 0.0,
-            "base_general": 0.0,
-            "amount_general": 0.0,
-            "percent_general": percent_general_default,
-            "base_reduced": 0.0,
-            "amount_reduced": 0.0,
-            "percent_reduced": percent_reduced_default,
-            "base_extend": 0.0,
-            "amount_extend": 0.0,
-            "percent_extend": percent_extend_default,
-        }
+        result = self._l10n_ve_init_tax_values_result(company, "sale")
+        result["total_taxed"] = sale_tax_data.get("_total_taxed", 0.0)
 
         for tax_group_id_str, tax_info in sale_tax_data.items():
             if tax_group_id_str.startswith("_"):
-                continue
-            try:
-                tax_group_id = int(tax_group_id_str)
-            except (ValueError, TypeError):
                 continue
             tax_type = tax_info.get("tax_type")
             if tax_type == "exempt":
@@ -391,102 +316,34 @@ class SalesBookFiscalMachineReportCustomHandler(models.AbstractModel):
             elif tax_type == "general":
                 result["base_general"] = tax_info.get("base", 0.0)
                 result["amount_general"] = tax_info.get("amount", 0.0)
-                if company.general_aliquot_sale:
-                    amount_val = float(company.general_aliquot_sale.amount)
-                    result["percent_general"] = amount_val
+                result["percent_general"] = self._l10n_ve_get_tax_rate_for_type(
+                    company, "general", "sale"
+                )
             elif tax_type == "reduced":
                 result["base_reduced"] = tax_info.get("base", 0.0)
                 result["amount_reduced"] = tax_info.get("amount", 0.0)
-                if company.reduced_aliquot_sale:
-                    amount_val = float(company.reduced_aliquot_sale.amount)
-                    result["percent_reduced"] = amount_val
+                result["percent_reduced"] = self._l10n_ve_get_tax_rate_for_type(
+                    company, "reduced", "sale"
+                )
             elif tax_type == "extend":
                 result["base_extend"] = tax_info.get("base", 0.0)
                 result["amount_extend"] = tax_info.get("amount", 0.0)
-                if company.extend_aliquot_sale:
-                    amount_val = float(company.extend_aliquot_sale.amount)
-                    result["percent_extend"] = amount_val
+                result["percent_extend"] = self._l10n_ve_get_tax_rate_for_type(
+                    company, "extend", "sale"
+                )
 
         return result
 
     def _calculate_tax_values(self, move):
-        result = {
-            "total_taxed": 0.0,
-            "total_exempt": 0.0,
-            "base_general": 0.0,
-            "amount_general": 0.0,
-            "base_reduced": 0.0,
-            "amount_reduced": 0.0,
-            "base_extend": 0.0,
-            "amount_extend": 0.0,
-        }
+        company = move.company_id
+        result = self._l10n_ve_init_tax_values_result(company, "sale")
 
         if move.state != "posted":
-            company = move.company_id
-            if company:
-                result["percent_general"] = (
-                    float(company.general_aliquot_sale.amount)
-                    if hasattr(company, "general_aliquot_sale")
-                    and company.general_aliquot_sale
-                    else 16.0
-                )
-                result["percent_reduced"] = (
-                    float(company.reduced_aliquot_sale.amount)
-                    if hasattr(company, "reduced_aliquot_sale")
-                    and company.reduced_aliquot_sale
-                    else 8.0
-                )
-                result["percent_extend"] = (
-                    float(company.extend_aliquot_sale.amount)
-                    if hasattr(company, "extend_aliquot_sale")
-                    and company.extend_aliquot_sale
-                    else 31.0
-                )
-            else:
-                result["percent_general"] = 16.0
-                result["percent_reduced"] = 8.0
-                result["percent_extend"] = 31.0
             return result
 
         multiplier = -1 if move.move_type == "out_refund" else 1
         tax_totals = move.tax_totals or {}
-
-        company = move.company_id
-        if not company:
-            result["percent_general"] = 16.0
-            result["percent_reduced"] = 8.0
-            result["percent_extend"] = 31.0
-            return result
-
-        percent_general_default = (
-            float(company.general_aliquot_sale.amount)
-            if hasattr(company, "general_aliquot_sale") and company.general_aliquot_sale
-            else 16.0
-        )
-        percent_reduced_default = (
-            float(company.reduced_aliquot_sale.amount)
-            if hasattr(company, "reduced_aliquot_sale") and company.reduced_aliquot_sale
-            else 8.0
-        )
-        percent_extend_default = (
-            float(company.extend_aliquot_sale.amount)
-            if hasattr(company, "extend_aliquot_sale") and company.extend_aliquot_sale
-            else 31.0
-        )
-
-        result["percent_general"] = percent_general_default
-        result["percent_reduced"] = percent_reduced_default
-        result["percent_extend"] = percent_extend_default
-
-        tax_config = {}
-        if hasattr(company, "exent_aliquot_sale") and company.exent_aliquot_sale:
-            tax_config["exempt"] = company.exent_aliquot_sale.tax_group_id.id
-        if hasattr(company, "reduced_aliquot_sale") and company.reduced_aliquot_sale:
-            tax_config["reduced"] = company.reduced_aliquot_sale.tax_group_id.id
-        if hasattr(company, "general_aliquot_sale") and company.general_aliquot_sale:
-            tax_config["general"] = company.general_aliquot_sale.tax_group_id.id
-        if hasattr(company, "extend_aliquot_sale") and company.extend_aliquot_sale:
-            tax_config["extend"] = company.extend_aliquot_sale.tax_group_id.id
+        tax_config = self._l10n_ve_get_tax_config(company)
 
         if not tax_totals:
             return result
@@ -507,32 +364,15 @@ class SalesBookFiscalMachineReportCustomHandler(models.AbstractModel):
 
                 for ttype, tg_id in tax_config.items():
                     if tg_id == tax_group_id:
-                        base = (
-                            tax_info.get(
-                                "base_amount", tax_info.get("base_amount_currency", 0.0)
-                            )
-                            * multiplier
+                        self._l10n_ve_apply_tax_values_from_config(
+                            result,
+                            tax_config,
+                            tax_info,
+                            ttype,
+                            company,
+                            "sale",
+                            multiplier,
                         )
-                        amount = (
-                            tax_info.get(
-                                "tax_amount", tax_info.get("tax_amount_currency", 0.0)
-                            )
-                            * multiplier
-                        )
-                        if ttype == "exempt":
-                            result["total_exempt"] += base
-                        elif ttype == "general":
-                            result["base_general"] = base
-                            result["amount_general"] = amount
-                            result["total_taxed"] += base + amount
-                        elif ttype == "reduced":
-                            result["base_reduced"] = base
-                            result["amount_reduced"] = amount
-                            result["total_taxed"] += base + amount
-                        elif ttype == "extend":
-                            result["base_extend"] = base
-                            result["amount_extend"] = amount
-                            result["total_taxed"] += base + amount
                         break
 
         return result
@@ -1170,11 +1010,8 @@ class SalesBookFiscalMachineReportCustomHandler(models.AbstractModel):
                 )
             elif col_expr_label == "reduced_aliquot":
                 company = self.env.company
-                percent_reduced = (
-                    float(company.reduced_aliquot_sale.amount)
-                    if hasattr(company, "reduced_aliquot_sale")
-                    and company.reduced_aliquot_sale
-                    else 8.0
+                percent_reduced = self._l10n_ve_get_tax_rate_for_type(
+                    company, "reduced", "sale"
                 )
                 line_columns.append(
                     report._build_column_dict(
@@ -1185,11 +1022,8 @@ class SalesBookFiscalMachineReportCustomHandler(models.AbstractModel):
                 )
             elif col_expr_label == "general_aliquot":
                 company = self.env.company
-                percent_general = (
-                    float(company.general_aliquot_sale.amount)
-                    if hasattr(company, "general_aliquot_sale")
-                    and company.general_aliquot_sale
-                    else 16.0
+                percent_general = self._l10n_ve_get_tax_rate_for_type(
+                    company, "general", "sale"
                 )
                 line_columns.append(
                     report._build_column_dict(
@@ -1256,11 +1090,8 @@ class SalesBookFiscalMachineReportCustomHandler(models.AbstractModel):
                 )
             elif col_expr_label == "extend_aliquot":
                 company = self.env.company
-                percent_extend = (
-                    float(company.extend_aliquot_sale.amount)
-                    if hasattr(company, "extend_aliquot_sale")
-                    and company.extend_aliquot_sale
-                    else 31.0
+                percent_extend = self._l10n_ve_get_tax_rate_for_type(
+                    company, "extend", "sale"
                 )
                 line_columns.append(
                     report._build_column_dict(

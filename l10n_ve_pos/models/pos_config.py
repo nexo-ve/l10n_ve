@@ -46,3 +46,43 @@ class PosConfig(models.Model):
                 config.l10n_ve_pos_next_free_control_number = (
                     book.l10n_ve_peek_next_formatted(section) or ""
                 )
+
+    def l10n_ve_get_invoice_emission_preview(self, journal_id=False):
+        """Fresh emission preview for the invoice journal (POS UI)."""
+        self.ensure_one()
+        self.invalidate_recordset(
+            [
+                "invoice_journal_id",
+                "l10n_ve_invoice_journal_display_name",
+                "l10n_ve_invoice_journal_emission_medium",
+                "l10n_ve_pos_free_book_section_name",
+                "l10n_ve_pos_next_free_control_number",
+            ]
+        )
+        journal = (
+            self.env["account.journal"].browse(journal_id)
+            if journal_id
+            else self.invoice_journal_id
+        )
+        if not journal:
+            journal = self.invoice_journal_id
+        medium = journal.l10n_ve_emission_medium if journal else False
+        next_control = ""
+        section_name = ""
+        if (
+            self.company_id.account_fiscal_country_id.code == "VE"
+            and journal
+            and medium == "free"
+        ):
+            section = journal.l10n_ve_invoice_section_id
+            if section:
+                section_name = section.display_name or ""
+                book = section.book_id
+                if book:
+                    next_control = book.l10n_ve_peek_next_formatted(section) or ""
+        return {
+            "emission_medium": medium or "",
+            "journal_display_name": journal.display_name if journal else "",
+            "next_free_control_number": next_control,
+            "free_book_section_name": section_name,
+        }

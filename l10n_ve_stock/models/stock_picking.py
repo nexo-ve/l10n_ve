@@ -56,6 +56,11 @@ class StockPicking(models.Model):
         currency_field="l10n_ve_dispatch_display_currency_id",
         compute="_compute_l10n_ve_dispatch_display_prices",
     )
+    l10n_ve_dispatch_display_discount = fields.Monetary(
+        string="Descuento",
+        currency_field="l10n_ve_dispatch_display_currency_id",
+        compute="_compute_l10n_ve_dispatch_display_prices",
+    )
     l10n_ve_dispatch_display_total = fields.Monetary(
         string="Total",
         currency_field="l10n_ve_dispatch_display_currency_id",
@@ -185,7 +190,11 @@ class StockPicking(models.Model):
         "company_id.l10n_ve_dispatch_guide_enabled",
         "sale_id",
         "sale_id.amount_total",
+        "sale_id.amount_untaxed",
         "sale_id.currency_id",
+        "sale_id.tax_totals",
+        "sale_id.l10n_ve_global_discount_ids",
+        "sale_id.l10n_ve_global_discount_ids.amount",
         "l10n_ve_dispatch_amount_total",
         "l10n_ve_dispatch_currency_id",
         "scheduled_date",
@@ -196,6 +205,7 @@ class StockPicking(models.Model):
                 picking.company_id.currency_id
             )
             picking.l10n_ve_dispatch_display_subtotal = 0.0
+            picking.l10n_ve_dispatch_display_discount = 0.0
             picking.l10n_ve_dispatch_display_total = 0.0
             if picking.picking_type_id.code != "outgoing":
                 continue
@@ -222,6 +232,11 @@ class StockPicking(models.Model):
                         date,
                     )
                 picking.l10n_ve_dispatch_display_subtotal = subtotal_sum
+                picking.l10n_ve_dispatch_display_discount = (
+                    picking._l10n_ve_dispatch_guide_discount_amount(
+                        picking_subtotal=subtotal_sum
+                    )
+                )
             else:
                 total_cur = (
                     picking.l10n_ve_dispatch_currency_id or company.currency_id
@@ -427,6 +442,74 @@ class StockPicking(models.Model):
             self.l10n_ve_dispatch_amount_total,
             self.l10n_ve_dispatch_currency_id or self.company_id.currency_id,
         )
+
+    def _l10n_ve_dispatch_guide_sale_discount_amount(self):
+        """Return the sale order global discount amount in order currency.
+
+        Uses tax totals (SENIAT discounts or product discount lines).
+        """
+        self.ensure_one()
+        order = self.sale_id
+        if not order:
+            return 0.0
+        tax_totals = order.tax_totals or {}
+        if tax_totals.get("l10n_ve_show_global_discount"):
+            return tax_totals.get("l10n_ve_global_discount_amount_currency", 0.0) or 0.0
+        if order.l10n_ve_global_discount_ids:
+            return sum(order.l10n_ve_global_discount_ids.mapped("amount"))
+        return 0.0
+
+    def _l10n_ve_dispatch_guide_discount_amount(self, picking_subtotal=None):
+        """Allocate sale global discount proportionally to this picking subtotal."""
+        self.ensure_one()
+        order = self.sale_id
+        if not order:
+            return 0.0
+        so_discount = self._l10n_ve_dispatch_guide_sale_discount_amount()
+        currency = order.currency_id
+        if float_is_zero(so_discount, precision_rounding=currency.rounding):
+            return 0.0
+        tax_totals = order.tax_totals or {}
+        so_gross = tax_totals.get("l10n_ve_subtotal_gross_currency")
+        if so_gross is None:
+            so_gross = (order.amount_untaxed or 0.0) + so_discount
+        if float_is_zero(so_gross, precision_rounding=currency.rounding):
+            return 0.0
+        if picking_subtotal is None:
+            picking_subtotal = self.l10n_ve_dispatch_display_subtotal or 0.0
+        ratio = min(picking_subtotal / so_gross, 1.0) if so_gross else 0.0
+        return currency.round(so_discount * ratio)
+
+    def _l10n_ve_dispatch_guide_discount_display(self):
+        """Return (amount, currency, detail lines) for the dispatch guide report."""
+        self.ensure_one()
+        currency = (
+            self.l10n_ve_dispatch_display_currency_id
+            or (self.sale_id.currency_id if self.sale_id else self.company_id.currency_id)
+        )
+        amount = self.l10n_ve_dispatch_display_discount
+        if float_is_zero(amount, precision_rounding=currency.rounding):
+            return 0.0, currency, []
+        lines = []
+        order = self.sale_id
+        if order:
+            tax_totals = order.tax_totals or {}
+            so_lines = tax_totals.get("l10n_ve_global_discount_lines") or []
+            so_discount = self._l10n_ve_dispatch_guide_sale_discount_amount()
+            ratio = (amount / so_discount) if so_discount else 0.0
+            for line in so_lines:
+                lines.append(
+                    {
+                        "id": line.get("id"),
+                        "name": line.get("name") or _("Descuento"),
+                        "amount": currency.round((line.get("amount") or 0.0) * ratio),
+                        "discount_type": line.get("discount_type"),
+                        "discount_percentage": line.get("discount_percentage"),
+                    }
+                )
+            if not lines:
+                lines = [{"id": False, "name": _("Descuento"), "amount": amount}]
+        return amount, currency, lines
 
     def _l10n_ve_dispatch_outgoing_moves_fully_invoiced(self):
         """True si las cantidades del albarán ya están cubiertas por facturas publicadas."""

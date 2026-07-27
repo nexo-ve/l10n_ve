@@ -147,7 +147,7 @@
             <xpath expr="//header//button[@name='action_reverse']" position="attributes">
                 <attribute
                     name="invisible"
-                >move_type != 'out_invoice' or state != 'posted' or (country_code == 'VE' and not l10n_ve_show_credit_note_action)</attribute>
+                >move_type not in ('out_invoice', 'in_invoice') or state != 'posted' or (country_code == 'VE' and not l10n_ve_show_credit_note_action)</attribute>
             </xpath>
 
             <xpath expr="//header//button[@name='action_reverse']" position="after">
@@ -159,7 +159,15 @@
                     type="object"
                     class="btn-secondary"
                     groups="account.group_account_invoice"
-                    invisible="country_code != 'VE' or move_type != 'out_invoice' or state != 'posted' or not l10n_ve_show_debit_note_action"
+                    invisible="country_code != 'VE' or move_type not in ('out_invoice', 'in_invoice') or state != 'posted' or not l10n_ve_show_debit_note_action"
+                />
+                <button
+                    name="action_l10n_ve_open_post_discount_wizard"
+                    string="Descuento"
+                    type="object"
+                    class="btn-secondary"
+                    groups="account.group_account_invoice"
+                    invisible="country_code != 'VE' or move_type != 'out_invoice' or state != 'posted' or not l10n_ve_show_post_discount_action"
                 />
             </xpath>
             <xpath expr="//field[@name='country_code']" position="after">
@@ -169,6 +177,7 @@
                 <field name="l10n_ve_show_control_number_ui" invisible="1" />
                 <field name="l10n_ve_show_credit_debit_actions" invisible="1" />
                 <field name="l10n_ve_show_credit_note_action" invisible="1" />
+                <field name="l10n_ve_show_post_discount_action" invisible="1" />
                 <field name="l10n_ve_show_debit_note_action" invisible="1" />
                 <field name="l10n_ve_show_unreversed_debit_note_alert" invisible="1" />
                 <field name="l10n_ve_unreversed_debit_note_count" invisible="1" />
@@ -215,13 +224,17 @@
                 expr="//field[@name='invoice_line_ids']//list//field[@name='tax_ids'][@widget='many2many_tax_tags']"
                 position="attributes"
             >
-                <attribute name="readonly">parent.country_code == 'VE'</attribute>
+                <attribute
+                    name="readonly"
+                >parent.country_code == 'VE' and parent.move_type in ('out_invoice', 'out_refund', 'out_receipt')</attribute>
             </xpath>
             <xpath
                 expr="//field[@name='invoice_line_ids']//form//field[@name='tax_ids']"
                 position="attributes"
             >
-                <attribute name="readonly">parent.country_code == 'VE'</attribute>
+                <attribute
+                    name="readonly"
+                >parent.country_code == 'VE' and parent.move_type in ('out_invoice', 'out_refund', 'out_receipt')</attribute>
             </xpath>
             <xpath
                 expr="//field[@name='invoice_line_ids']//list//field[@name='price_unit']"
@@ -229,7 +242,7 @@
             >
                 <attribute
                     name="readonly"
-                >parent.country_code == 'VE' and (parent.move_type in ('out_refund', 'in_refund') or parent.debit_origin_id)</attribute>
+                >parent.country_code == 'VE' and (parent.move_type == 'out_refund' or (parent.move_type == 'out_invoice' and parent.debit_origin_id))</attribute>
             </xpath>
             <xpath
                 expr="//field[@name='invoice_line_ids']//form//field[@name='price_unit']"
@@ -237,7 +250,7 @@
             >
                 <attribute
                     name="readonly"
-                >parent.country_code == 'VE' and (parent.move_type in ('out_refund', 'in_refund') or parent.debit_origin_id)</attribute>
+                >parent.country_code == 'VE' and (parent.move_type == 'out_refund' or (parent.move_type == 'out_invoice' and parent.debit_origin_id))</attribute>
             </xpath>
             <xpath
                 expr="//field[@name='invoice_line_ids']//kanban//field[@name='price_unit']"
@@ -245,7 +258,7 @@
             >
                 <attribute
                     name="readonly"
-                >parent.country_code == 'VE' and (parent.move_type in ('out_refund', 'in_refund') or parent.debit_origin_id)</attribute>
+                >parent.country_code == 'VE' and (parent.move_type == 'out_refund' or (parent.move_type == 'out_invoice' and parent.debit_origin_id))</attribute>
             </xpath>
             <xpath
                 expr="//div[@name='currency_div']/div[1]/field[@name='currency_id']"
@@ -253,7 +266,7 @@
             >
                 <attribute
                     name="readonly"
-                >state != 'draft' or (country_code == 'VE' and (move_type in ('out_refund', 'in_refund') or debit_origin_id))</attribute>
+                >state != 'draft' or (country_code == 'VE' and (move_type == 'out_refund' or (move_type == 'out_invoice' and debit_origin_id)))</attribute>
             </xpath>
             <xpath expr="//group[@id='header_left_group']/*[1]" position="before">
                 <!-- Art. 13 num. 3-4 PA SNAT/2011/0071; Art. 11 PA SNAT/2011/0071: N° control (terceros en MF). -->
@@ -451,7 +464,6 @@
                 expr="//group[hasclass('oe_invoice_lines_tab', 'overflow-hidden')]//field[@name='narration']"
                 position="after"
             >
-                <!-- Providencia SNAT/2022/000013; Art. 13 num. 14 PA SNAT/2011/0071: leyendas fiscales. -->
                 <field
                     name="seniat_invoice_tag"
                     widget="html"
@@ -461,6 +473,20 @@
                     readonly="1"
                     class="mb-3 text-muted"
                 />
+            </xpath>
+            <xpath expr="//field[@name='tax_totals']" position="before">
+                <field name="l10n_ve_global_discount_ids" invisible="1" />
+                <div
+                    class="d-flex justify-content-end mb-1"
+                    invisible="country_code != 'VE' or state != 'draft' or move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund', 'out_receipt', 'in_receipt')"
+                >
+                    <button
+                        name="action_l10n_ve_open_global_discount_wizard"
+                        type="object"
+                        string="Descuento"
+                        class="btn btn-secondary"
+                    />
+                </div>
             </xpath>
             <xpath expr="//group[@id='header_left_group']" position="inside">
                 <field name="l10n_ve_lock_credit_debit_journal" invisible="1" />
@@ -514,7 +540,7 @@
             <xpath expr="//field[@name='currency_id']" position="attributes">
                 <attribute
                     name="readonly"
-                >state in ('cancel', 'posted') or (country_code == 'VE' and (move_type in ('out_refund', 'in_refund') or debit_origin_id))</attribute>
+                >state in ('cancel', 'posted') or (country_code == 'VE' and (move_type == 'out_refund' or (move_type == 'out_invoice' and debit_origin_id)))</attribute>
             </xpath>
             <xpath expr="//field[@name='status_in_payment']" position="before">
                 <field

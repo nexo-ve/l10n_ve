@@ -51,8 +51,39 @@ class AccountMove(models.Model):
             raise ValidationError(_("Esta acción solo aplica para compañías VE."))
         if self.l10n_ve_journal_emission_medium != "fiscal_machine":
             raise ValidationError(_("El diario no está configurado como máquina fiscal."))
+        if not self.journal_id.l10n_ve_fiscal_machine_id:
+            raise ValidationError(
+                _("Configure la máquina fiscal en el diario de ventas.")
+            )
         if self.state != "posted":
             raise ValidationError(_("Debe confirmar la factura antes de imprimirla fiscalmente."))
+
+    def _l10n_ve_fiscal_serial_journal_machine_payload(self):
+        self.ensure_one()
+        if self.l10n_ve_journal_emission_medium != "fiscal_machine":
+            return {}
+        machine = self.journal_id.l10n_ve_fiscal_machine_id
+        if not machine:
+            raise ValidationError(
+                _("Configure la máquina fiscal en el diario de ventas.")
+            )
+        baud = machine.baudrate or "9600"
+        return {
+            "machine_id": machine.id,
+            "name": machine.name or "",
+            "registered_serial": machine.registered_serial or "",
+            "baudrate": int(baud) if str(baud).isdigit() else 9600,
+            "parity": machine.parity
+            if machine.parity in ("none", "even", "odd")
+            else "even",
+            "flag_21": machine.flag_21
+            or self.company_id.l10n_ve_fiscal_serial_flag_21
+            or "30",
+            "serial_port": machine.serial_port or "",
+            "webserial_usb_vendor_id": machine.webserial_usb_vendor_id or 0,
+            "webserial_usb_product_id": machine.webserial_usb_product_id or 0,
+            "webserial_usb_serial_number": machine.webserial_usb_serial_number or "",
+        }
 
     def _l10n_ve_fiscal_serial_map_tax_code(self, line):
         tax = line.tax_ids[:1]
@@ -69,21 +100,33 @@ class AccountMove(models.Model):
 
     def _l10n_ve_fiscal_serial_line_price_unit_for_print(self, line):
         self.ensure_one()
+        price = line.price_unit or 0.0
         if self.currency_id == self.company_currency_id:
-            return line.price_unit
-        company_price = getattr(line, "price_unit_company_currency", None)
-        if company_price is not None and not float_is_zero(
-            company_price,
-            precision_rounding=self.company_currency_id.rounding,
-        ):
-            return company_price
-        rate = line.currency_rate or 0.0
-        if rate and not float_is_zero(rate):
-            return self.company_currency_id.round(line.price_unit / rate)
-        return line.price_unit
+            return price
+        rate = line.currency_rate or self.invoice_currency_rate or 0.0
+        if not float_is_zero(rate, precision_rounding=1e-9):
+            return self.company_currency_id.round(price / rate)
+        return price
+
+    def _l10n_ve_fiscal_serial_global_discount_amount(self):
+        self.ensure_one()
+        tax_totals = self.tax_totals or {}
+        amount = tax_totals.get("l10n_ve_global_discount_amount", 0.0)
+        if float_is_zero(amount, precision_rounding=self.company_currency_id.rounding):
+            return 0.0
+        return amount
+
+    def _l10n_ve_fiscal_serial_line_discount_amounts(self):
+        self.ensure_one()
+        base_lines, _tax_lines = self._get_rounded_base_and_tax_lines()
+        return self.env["account.tax"]._l10n_ve_get_line_discount_amounts(
+            base_lines,
+            self.company_id,
+        )
 
     def _l10n_ve_fiscal_serial_invoice_lines_payload(self):
         self.ensure_one()
+        discount_amounts = self._l10n_ve_fiscal_serial_line_discount_amounts()
         lines = []
         for line in self.invoice_line_ids.filtered(
             lambda line_item: line_item.display_type in (False, "product")
@@ -98,6 +141,7 @@ class AccountMove(models.Model):
                     "default_code": default_code,
                     "name": display_name,
                     "discount": line.discount or 0.0,
+                    "discount_amount": discount_amounts.get(line.id, 0.0),
                 }
             )
         return lines
@@ -249,12 +293,18 @@ class AccountMove(models.Model):
 
     def _l10n_ve_fiscal_serial_base_payload(self):
         self.ensure_one()
+        machine_cfg = self._l10n_ve_fiscal_serial_journal_machine_payload()
+        flag_21 = machine_cfg.get("flag_21") or (
+            self.company_id.l10n_ve_fiscal_serial_flag_21 or "30"
+        )
         return {
             "company_id": self.company_id.id,
             "partner_id": self._l10n_ve_fiscal_serial_partner_payload(),
             "invoice_lines": self._l10n_ve_fiscal_serial_invoice_lines_payload(),
             "payment_lines": self._l10n_ve_fiscal_serial_payment_lines_payload(),
-            "flag_21": self.company_id.l10n_ve_fiscal_serial_flag_21 or "30",
+            "global_discount_amount": self._l10n_ve_fiscal_serial_global_discount_amount(),
+            "flag_21": flag_21,
+            "fiscal_machine": machine_cfg or False,
             "aditional_lines": [],
             "has_cashbox": False,
             "use_emulator": bool(self.company_id.l10n_ve_fiscal_serial_use_emulator),
@@ -345,6 +395,7 @@ class AccountMove(models.Model):
                 self.l10n_ve_invoice_number
             ),
             "move_id": self.id,
+            "fiscal_machine": self._l10n_ve_fiscal_serial_journal_machine_payload(),
         }
 
     def _l10n_ve_fiscal_serial_write_print_result(self, values):

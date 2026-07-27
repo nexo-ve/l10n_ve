@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
 import { _t } from "@web/core/l10n/translation";
+import { createFiscalSerialAuditLogger } from "./fiscal_serial_audit";
 
 const REPORT_LABELS = {
     report_x: _t("Reporte X"),
@@ -40,6 +41,9 @@ export async function l10nVeFiscalSerialExecuteReport({
     );
 
     let driver;
+    let auditLogger;
+    let hadError = false;
+    let errorDetail = "";
     let blocked = false;
     const setProgress = (percent, message) => {
         const pct = Math.max(0, Math.min(100, Math.round(percent)));
@@ -53,7 +57,11 @@ export async function l10nVeFiscalSerialExecuteReport({
 
     try {
         setProgress(0, progressLabel);
+        auditLogger = createFiscalSerialAuditLogger(env.services.orm, {
+            source: "report",
+        });
         driver = fiscalSerial.createTfhkaFiscal();
+        auditLogger.attachDriver(driver);
         const opened = await driver.openFpCtrl({ baudRate: 9600, parity: "even" });
         if (!opened) {
             throw new Error(driver.estado || _t("No fue posible abrir el puerto serial."));
@@ -65,7 +73,7 @@ export async function l10nVeFiscalSerialExecuteReport({
             throw new Error(response?.message || _t("No se pudo imprimir el reporte fiscal."));
         }
         try {
-            await driver.closeFpCtrl();
+            await driver.closeFpCtrl({ reason: "success" });
         } catch {
         }
         driver = null;
@@ -75,20 +83,27 @@ export async function l10nVeFiscalSerialExecuteReport({
         });
         return true;
     } catch (error) {
+        hadError = true;
         const msg =
             error?.data?.message ||
             error?.data?.arguments?.[0] ||
             error?.message ||
             String(error || _t("Error al imprimir el reporte fiscal."));
+        errorDetail = msg;
         console.error(`${logTag} Error reporte fiscal:`, error);
         notification.add(msg, { type: "danger" });
         return false;
     } finally {
         if (driver) {
             try {
-                await driver.closeFpCtrl();
+                await driver.closeFpCtrl({
+                    reason: hadError ? "error" : "finally_cleanup",
+                    detail: errorDetail,
+                });
             } catch {
             }
+        } else if (auditLogger) {
+            await auditLogger.flush();
         }
         if (blocked) {
             ui.unblock();

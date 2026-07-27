@@ -16,6 +16,14 @@ patch(PosOrder.prototype, {
             this.to_invoice = true;
         }
     },
+    setInvoiceJournal(journal) {
+        this.update({
+            invoice_journal_id: journal || false,
+        });
+        if (typeof this.l10n_ve_pos_updateIgtf === "function") {
+            this.l10n_ve_pos_updateIgtf();
+        }
+    },
     set_to_invoice(to_invoice) {
         if (isVenezuelaCompany(this) && !to_invoice) {
             return;

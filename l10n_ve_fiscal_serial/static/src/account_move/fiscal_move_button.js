@@ -3,6 +3,7 @@
 import { Component, xml } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { createFiscalSerialAuditLogger } from "../fiscal_serial/fiscal_serial_audit";
 
 const ACTION_TO_CHECK_METHOD = {
     print_out_invoice: "check_print_out_invoice",
@@ -23,6 +24,13 @@ const ACTION_BUTTON_CLASS = {
     print_out_refund: "btn btn-primary",
     print_debit_note: "btn btn-primary",
     reprint: "btn btn-secondary",
+};
+
+const ACTION_AUDIT_SOURCE = {
+    print_out_invoice: "invoice_print",
+    print_out_refund: "refund_print",
+    print_debit_note: "debit_note",
+    reprint: "reprint",
 };
 
 export class FiscalMoveButton extends Component {
@@ -72,7 +80,7 @@ export class FiscalMoveButton extends Component {
     }
 
     async _reloadView() {
-        await this.action.doAction({ type: "ir.actions.client", tag: "reload" });
+        await this.action.doAction({ type: "ir.actions.client", tag: "soft_reload" });
     }
 
     _formatErrorMessage(error) {
@@ -138,6 +146,9 @@ export class FiscalMoveButton extends Component {
             return;
         }
         let driver;
+        let auditLogger;
+        let hadError = false;
+        let errorDetail = "";
         try {
             this._setBlockingProgress(0, "Imprimiendo...");
             this.notification.add(
@@ -145,11 +156,31 @@ export class FiscalMoveButton extends Component {
                 { type: "warning" }
             );
             const payload = await this._getPayload(actionName, moveId);
+            const machineConfig = payload.fiscal_machine || {};
+            const baudRate = machineConfig.baudrate || 9600;
+            const parity = machineConfig.parity === "none" ? "none" : "even";
             this._setBlockingProgress(15, "Imprimiendo...");
+            auditLogger = createFiscalSerialAuditLogger(this.orm, {
+                source: ACTION_AUDIT_SOURCE[actionName] || "other",
+                moveId,
+                machineId: machineConfig.machine_id || false,
+            });
             driver = this.fiscalSerial.createTfhkaFiscal();
-            const opened = await driver.openFpCtrl({ baudRate: 9600, parity: "even" });
+            auditLogger.attachDriver(driver);
+            const opened = await driver.openFpCtrl({ baudRate, parity });
             if (!opened) {
                 throw new Error(driver.estado || "No fue posible abrir el puerto serial.");
+            }
+            this._setBlockingProgress(20, "Imprimiendo...");
+            const verification = await this.fiscalSerial.verifyConnectedFiscalMachine(
+                driver,
+                machineConfig,
+                {
+                    parseTfhkaS1StatusResponse: this.fiscalSerial.parseTfhkaS1StatusResponse,
+                }
+            );
+            if (verification.training_mode) {
+                this.notification.add(verification.message, { type: "warning" });
             }
             this._setBlockingProgress(25, "Imprimiendo...");
             const machine = this.fiscalSerial.createTfhkaFiscalMachine(driver);
@@ -161,7 +192,7 @@ export class FiscalMoveButton extends Component {
                 },
             });
             try {
-                await driver.closeFpCtrl();
+                await driver.closeFpCtrl({ reason: "success" });
             } catch {
             }
             driver = null;
@@ -182,7 +213,9 @@ export class FiscalMoveButton extends Component {
                 type: "success",
             });
         } catch (error) {
+            hadError = true;
             const message = this._formatErrorMessage(error);
+            errorDetail = message;
             console.error("[l10n_ve_fiscal_serial] Error impresión fiscal:", error);
             this.notification.add(message, {
                 type: "danger",
@@ -190,9 +223,14 @@ export class FiscalMoveButton extends Component {
         } finally {
             if (driver) {
                 try {
-                    await driver.closeFpCtrl();
+                    await driver.closeFpCtrl({
+                        reason: hadError ? "error" : "finally_cleanup",
+                        detail: errorDetail,
+                    });
                 } catch {
                 }
+            } else if (auditLogger) {
+                await auditLogger.flush();
             }
             this._clearBlockingProgress();
         }

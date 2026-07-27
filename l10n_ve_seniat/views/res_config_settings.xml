@@ -33,56 +33,50 @@
                         </div>
                     </div>
                     <div
-                        id="l10n_ve_seniat_div_tax_rates_sales"
+                        id="l10n_ve_seniat_div_global_discount_accounts"
                         class="col-12 col-lg-6 o_setting_box"
                     >
                         <div class="o_setting_right_pane">
-                            <separator string="Sales Tax Rates" />
-                            <!-- Art. 13 num. 9-11 PA SNAT/2011/0071: alícuotas de IVA en ventas. -->
-                            <group>
+                            <separator string="Descuentos globales (contabilidad)" />
+                            <div class="text-muted">
+                                Cuenta contable donde se registra el monto del descuento
+                                global en apuntes separados. También aplica a descuentos
+                                por línea de factura.
+                            </div>
+                            <group class="mt-2">
                                 <field
-                                    name="exent_aliquot_sale"
-                                    string="Exempt Aliquot"
+                                    name="account_discount_expense_allocation_id"
+                                    string="Facturas de venta"
+                                    placeholder="Misma cuenta que el producto"
                                 />
                                 <field
-                                    name="general_aliquot_sale"
-                                    string="General Aliquot"
-                                />
-                                <field
-                                    name="reduced_aliquot_sale"
-                                    string="Reduced Aliquot"
-                                />
-                                <field
-                                    name="extend_aliquot_sale"
-                                    string="Extended Aliquot"
+                                    name="account_discount_income_allocation_id"
+                                    string="Facturas de compra"
+                                    placeholder="Misma cuenta que el producto"
                                 />
                             </group>
                         </div>
                     </div>
                     <div
-                        id="l10n_ve_seniat_div_tax_rates_purchases"
+                        id="l10n_ve_seniat_div_tax_groups"
                         class="col-12 col-lg-6 o_setting_box"
                     >
                         <div class="o_setting_right_pane">
-                            <separator string="Purchase Tax Rates" />
-                            <group>
-                                <field
-                                    name="exent_aliquot_purchase"
-                                    string="Exempt Aliquot"
+                            <span class="o_form_label">Grupos de impuestos SENIAT</span>
+                            <div class="text-muted">
+                                Configure el tipo de alícuota y el orden de aparición
+                                en los libros de ventas y compras desde los grupos de
+                                impuestos.
+                            </div>
+                            <div class="mt-2">
+                                <button
+                                    name="action_open_l10n_ve_tax_groups"
+                                    type="object"
+                                    string="Configurar grupos de impuestos"
+                                    class="btn-link"
+                                    icon="oi-arrow-right"
                                 />
-                                <field
-                                    name="general_aliquot_purchase"
-                                    string="General Aliquot"
-                                />
-                                <field
-                                    name="reduced_aliquot_purchase"
-                                    string="Reduced Aliquot"
-                                />
-                                <field
-                                    name="extend_aliquot_purchase"
-                                    string="Extended Aliquot"
-                                />
-                            </group>
+                            </div>
                         </div>
                     </div>
                     <div

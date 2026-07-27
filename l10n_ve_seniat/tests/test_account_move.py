@@ -405,7 +405,7 @@ class TestAccountMove(L10nVeSeniatCommon):
 
     def test_cancel_wizard_blocked_for_fiscal_machine(self):
         journal = self.company_data["default_journal_sale"]
-        journal.write({"l10n_ve_emission_medium": "fiscal_machine"})
+        self._l10n_ve_configure_journal_fiscal_machine(journal)
         move = self.env["account.move"].create(
             self._create_invoice_vals(self.partner_ve)
         )
@@ -416,7 +416,7 @@ class TestAccountMove(L10nVeSeniatCommon):
 
     def test_cancel_wizard_blocked_for_fiscal_machine_credit_note(self):
         journal = self.company_data["default_journal_sale"]
-        journal.write({"l10n_ve_emission_medium": "fiscal_machine"})
+        self._l10n_ve_configure_journal_fiscal_machine(journal)
         invoice = self.env["account.move"].create(
             self._create_invoice_vals(self.partner_ve)
         )
@@ -430,7 +430,7 @@ class TestAccountMove(L10nVeSeniatCommon):
 
     def test_cancel_wizard_blocked_for_fiscal_machine_debit_note(self):
         journal = self.company_data["default_journal_sale"]
-        journal.write({"l10n_ve_emission_medium": "fiscal_machine"})
+        self._l10n_ve_configure_journal_fiscal_machine(journal)
         invoice = self.env["account.move"].create(
             self._create_invoice_vals(self.partner_ve)
         )
@@ -1327,7 +1327,7 @@ class TestAccountMove(L10nVeSeniatCommon):
 
     def test_get_extra_print_items_hides_pdf_download_for_fiscal_machine(self):
         journal = self.company_data["default_journal_sale"]
-        journal.l10n_ve_emission_medium = "fiscal_machine"
+        self._l10n_ve_configure_journal_fiscal_machine(journal)
         move = self.env["account.move"].create(
             self._create_invoice_vals(self.partner_ve)
         )
@@ -1510,13 +1510,11 @@ class TestAccountMove(L10nVeSeniatCommon):
 
     def test_fiscal_machine_posts_without_machine_fields_or_control(self):
         journal = self.company_data["default_journal_sale"]
-        journal.write(
-            {
-                "l10n_ve_emission_medium": "fiscal_machine",
-                "l10n_ve_invoice_section_id": False,
-                "l10n_ve_credit_note_section_id": False,
-                "l10n_ve_debit_note_section_id": False,
-            }
+        self._l10n_ve_configure_journal_fiscal_machine(
+            journal,
+            l10n_ve_invoice_section_id=False,
+            l10n_ve_credit_note_section_id=False,
+            l10n_ve_debit_note_section_id=False,
         )
         move = self.env["account.move"].create(
             self._create_invoice_vals(self.partner_ve)
@@ -1540,13 +1538,11 @@ class TestAccountMove(L10nVeSeniatCommon):
         self,
     ):
         journal = self.company_data["default_journal_sale"]
-        journal.write(
-            {
-                "l10n_ve_emission_medium": "fiscal_machine",
-                "l10n_ve_invoice_section_id": False,
-                "l10n_ve_credit_note_section_id": False,
-                "l10n_ve_debit_note_section_id": False,
-            }
+        self._l10n_ve_configure_journal_fiscal_machine(
+            journal,
+            l10n_ve_invoice_section_id=False,
+            l10n_ve_credit_note_section_id=False,
+            l10n_ve_debit_note_section_id=False,
         )
         move = self.env["account.move"].create(
             self._create_invoice_vals(self.partner_ve)

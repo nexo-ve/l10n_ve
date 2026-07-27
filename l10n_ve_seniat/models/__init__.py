@@ -8,6 +8,7 @@ from . import res_partner
 from . import res_country_parish
 from . import res_country_municipality
 from . import account_tax
+from . import account_tax_group
 from . import res_company
 from . import l10n_ve_implementer
 from . import l10n_ve_dispatch_guide_email
@@ -19,6 +20,9 @@ from . import account_move_refund_currency
 from . import account_move_reversal
 from . import account_debit_note
 from . import l10n_ve_invoice_cancel_reason
+from . import l10n_ve_discount_reason
+from . import l10n_ve_global_discount
+from . import l10n_ve_account_move_discount
 from . import account_move_line
 from . import account_journal
 from . import account_journal_dashboard

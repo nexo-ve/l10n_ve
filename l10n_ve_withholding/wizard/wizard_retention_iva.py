@@ -54,24 +54,22 @@ class TxtWizard(models.TransientModel):
             )
             line_data["Tipo de operación"] = "C"
 
-            # if line.move_id.journal_id.is_debit:
-            #     line_data["Tipo de documento"] = document_types["in_debit"]
-            #     line_data["Número del documento afectado"] = (
-            #         line.move_id.debit_origin_id.name or "0"
-            #     )
-            # else:
-            line_data["Tipo de documento"] = document_types[line.move_id.move_type]
-            if line.move_id.journal_id.is_debit and line.move_id.debit_origin_id:
+            if line.move_id.debit_origin_id:
+                line_data["Tipo de documento"] = document_types["in_debit"]
                 orig = line.move_id.debit_origin_id
-                line_data["Número del documento afectado"] = orig.ref or orig.name or "0"
+                line_data["Número del documento afectado"] = (
+                    orig.ref or orig.name or "0"
+                )
             else:
+                line_data["Tipo de documento"] = document_types[line.move_id.move_type]
                 rev = line.move_id.reversed_entry_id
                 line_data["Número del documento afectado"] = (
                     (rev.ref or rev.name or "0") if rev else "0"
                 )
 
             line_data["RIF de proveedor"] = (
-                line.move_id.partner_id.prefix_vat + line.move_id.partner_id.vat
+                (line.move_id.partner_id.prefix_vat or "")
+                + (line.move_id.partner_id.vat or "")
             )
             line_data["Número de documento"] = line.move_id.ref or line.move_id.name
             line_data["Número de control"] = line.move_id.ref

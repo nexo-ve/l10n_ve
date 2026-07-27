@@ -4,8 +4,26 @@
         id="menu_seniat_fiscal_machines"
         name="Máquinas Fiscales"
         parent="l10n_ve_seniat.menu_seniat_root"
-        action="l10n_ve_fiscal_serial.action_fiscal_machines"
         sequence="45"
+        groups="l10n_ve_seniat.group_seniat"
+    />
+    <record id="menu_seniat_fiscal_machines" model="ir.ui.menu">
+        <field name="action" eval="False"/>
+    </record>
+    <menuitem
+        id="menu_seniat_fiscal_machines_list"
+        name="Máquinas"
+        parent="menu_seniat_fiscal_machines"
+        action="l10n_ve_fiscal_serial.action_l10n_ve_fiscal_machine"
+        sequence="10"
+        groups="l10n_ve_seniat.group_seniat"
+    />
+    <menuitem
+        id="menu_seniat_fiscal_serial_audit"
+        name="Auditoría fiscal serial"
+        parent="menu_seniat_fiscal_machines"
+        action="l10n_ve_fiscal_serial.action_l10n_ve_fiscal_serial_audit"
+        sequence="30"
         groups="l10n_ve_seniat.group_seniat"
     />
 </odoo>

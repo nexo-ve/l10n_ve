@@ -1,7 +1,7 @@
 {
     "name": "Venezuela - IGTF en Punto de Venta",
     "summary": "Calcula el IGTF en el POS según monedas configuradas en l10n_ve_igtf y la moneda del método de pago.",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.1.5",
     "category": "Point of Sale/Localizations",
     "author": "andyengit, Odoo Community Association (OCA)",
     "maintainer": "andyengit",
@@ -24,8 +24,6 @@
             "l10n_ve_pos_igtf/static/src/overrides/screens/payment_screen.xml",
             "l10n_ve_pos_igtf/static/src/overrides/screens/payment_lines/payment_lines.js",
             "l10n_ve_pos_igtf/static/src/overrides/screens/payment_lines/payment_lines.xml",
-            "l10n_ve_pos_igtf/static/src/overrides/screens/payment_status/payment_status.js",
-            "l10n_ve_pos_igtf/static/src/overrides/screens/payment_status/payment_status.xml",
         ],
     },
     "installable": True,

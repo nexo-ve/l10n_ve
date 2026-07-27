@@ -11,6 +11,10 @@ class L10nVeSeniatCommon(AccountTestInvoicingCommon):
             {"vat": "J770023598", "country_id": cls.env.ref("base.ve").id}
         )
         cls.change_company_country(cls.env.company, cls.env.ref("base.ve"))
+        sale_tax = cls.company_data["default_tax_sale"]
+        if sale_tax:
+            sale_tax.sudo().write({"price_include": False})
+            sale_tax.flatten_taxes_hierarchy().sudo().write({"price_include": False})
         cls._setup_l10n_ve_sale_journal_sections()
 
     @classmethod
@@ -39,3 +43,24 @@ class L10nVeSeniatCommon(AccountTestInvoicingCommon):
                 "l10n_ve_credit_note_section_id": sec.id,
             }
         )
+
+    @classmethod
+    def _l10n_ve_configure_journal_fiscal_machine(cls, journal, **extra):
+        vals = {"l10n_ve_emission_medium": "fiscal_machine"}
+        if "l10n_ve_fiscal_machine_id" in journal._fields:
+            machine_model = cls.env.get("l10n.ve.fiscal.machine")
+            machine = machine_model.search(
+                [("company_id", "=", journal.company_id.id)], limit=1
+            )
+            if not machine:
+                machine = machine_model.create(
+                    {
+                        "name": "Test Fiscal Machine",
+                        "company_id": journal.company_id.id,
+                        "registered_serial": "TESTSENIAT1",
+                        "fiscal_rif": "J123456789",
+                    }
+                )
+            vals["l10n_ve_fiscal_machine_id"] = machine.id
+        vals.update(extra)
+        journal.write(vals)

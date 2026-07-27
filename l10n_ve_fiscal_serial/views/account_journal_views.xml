@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_journal_form_fiscal_serial" model="ir.ui.view">
+        <field name="name">account.journal.ve.fiscal.serial.form</field>
+        <field name="model">account.journal</field>
+        <field name="inherit_id" ref="l10n_ve_seniat.view_account_journal_form_inherit"/>
+        <field name="arch" type="xml">
+            <xpath
+                expr="//field[@name='l10n_ve_max_invoice_lines']/parent::group"
+                position="attributes"
+            >
+                <attribute
+                    name="invisible"
+                >type != 'sale' or l10n_ve_emission_medium in ('free', 'fiscal_machine')</attribute>
+            </xpath>
+            <xpath expr="//field[@name='l10n_ve_emission_medium']" position="after">
+                <field
+                    name="l10n_ve_fiscal_machine_id"
+                    invisible="l10n_ve_emission_medium != 'fiscal_machine'"
+                    required="l10n_ve_emission_medium == 'fiscal_machine'"
+                    options="{'no_create': True}"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>

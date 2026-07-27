@@ -40,6 +40,18 @@
             groups="account.group_account_readonly"
         />
         <menuitem
+            id="menu_action_account_report_bank_book"
+            name="🇻🇪 Libro de Banco"
+            action="action_account_report_bank_book"
+            groups="account.group_account_readonly"
+        />
+        <menuitem
+            id="menu_action_account_report_cash_book"
+            name="🇻🇪 Libro de Caja"
+            action="action_account_report_cash_book"
+            groups="account.group_account_readonly"
+        />
+        <menuitem
             id="menu_action_account_report_daily_payments"
             name="🇻🇪 Pagos por diario"
             action="action_account_report_daily_payments"

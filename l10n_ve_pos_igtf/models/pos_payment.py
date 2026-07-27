@@ -17,8 +17,8 @@ class PosPayment(models.Model):
         if not allowed:
             return False
         pay_cur = (
-            self.currency_pos_payment_currency_id
-            or self.payment_method_id.currency_pos_payment_currency_id
+            self.payment_currency_id
+            or self.payment_method_id.payment_currency_id
             or self.currency_id
         )
         return bool(pay_cur) and pay_cur in allowed

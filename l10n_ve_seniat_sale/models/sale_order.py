@@ -1,8 +1,12 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from collections import defaultdict
+
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 from odoo.tools import float_compare, float_is_zero, float_round
+
+from odoo.addons.l10n_ve_seniat.models import l10n_ve_global_discount as l10n_ve_discount_logic
 
 
 class SaleOrder(models.Model):
@@ -20,6 +24,12 @@ class SaleOrder(models.Model):
     )
     l10n_ve_hide_order_preview = fields.Boolean(
         compute="_compute_l10n_ve_hide_order_preview",
+    )
+    l10n_ve_global_discount_ids = fields.One2many(
+        comodel_name="l10n.ve.sale.order.discount",
+        inverse_name="sale_order_id",
+        string="Global discounts",
+        copy=False,
     )
 
     @api.depends("country_code", "journal_id", "journal_id.l10n_ve_emission_medium")
@@ -123,10 +133,299 @@ class SaleOrder(models.Model):
             limit=1,
         )
 
+    def _l10n_ve_get_product_discount_lines(self):
+        self.ensure_one()
+        disc = self.company_id.sale_discount_product_id
+        if not disc:
+            return self.env["sale.order.line"]
+        return self.order_line.filtered(
+            lambda line: not line.display_type and line.product_id == disc
+        )
+
+    def action_l10n_ve_remove_global_discount(self, discount_id):
+        self.ensure_one()
+        discount = self.env["l10n.ve.sale.order.discount"].browse(discount_id)
+        if discount.exists():
+            if discount.sale_order_id != self:
+                raise UserError(_("El descuento no pertenece a este pedido."))
+            discount.unlink()
+            return True
+        line = self.env["sale.order.line"].browse(discount_id)
+        if line.exists() and line in self._l10n_ve_get_product_discount_lines():
+            line.unlink()
+            return True
+        raise UserError(_("El descuento no pertenece a este pedido."))
+
+    def action_l10n_ve_remove_all_global_discounts(self):
+        self.ensure_one()
+        product_lines = self._l10n_ve_get_product_discount_lines()
+        if self.l10n_ve_global_discount_ids:
+            if len(self.l10n_ve_global_discount_ids) <= 1:
+                return True
+            self.l10n_ve_global_discount_ids.unlink()
+            return True
+        if len(product_lines) <= 1:
+            return True
+        product_lines.unlink()
+        return True
+
+    def _l10n_ve_check_single_percentage_global_discount(self, discounts):
+        return l10n_ve_discount_logic.l10n_ve_check_single_percentage_global_discount(
+            discounts
+        )
+
+    def _l10n_ve_sequential_global_discount_amounts(self, subtotal_by_taxes):
+        self.ensure_one()
+        return l10n_ve_discount_logic.l10n_ve_sequential_global_discount_amounts(
+            self, subtotal_by_taxes
+        )
+
+    def _l10n_ve_get_global_discount_lines_data(self, subtotal_by_taxes):
+        self.ensure_one()
+        return l10n_ve_discount_logic.l10n_ve_get_global_discount_lines_data(
+            self, subtotal_by_taxes
+        )
+
+    def _l10n_ve_validate_global_discount_total(self):
+        for order in self:
+            l10n_ve_discount_logic.l10n_ve_validate_global_discount_total(order)
+
+    def _l10n_ve_refresh_percentage_global_discount_amounts(self):
+        for order in self:
+            l10n_ve_discount_logic.l10n_ve_refresh_percentage_global_discount_amounts(order)
+
+    def _l10n_ve_refresh_global_discounts_from_lines(self):
+        orders = self.filtered(
+            lambda order: order.state not in ("cancel",)
+            and order.l10n_ve_global_discount_ids
+        )
+        if not orders or self.env.context.get("l10n_ve_skip_discount_refresh"):
+            return
+        orders._l10n_ve_refresh_percentage_global_discount_amounts()
+        orders._l10n_ve_validate_global_discount_total()
+
+    def _l10n_ve_global_discount_applies(self):
+        self.ensure_one()
+        return self.country_code == "VE" and bool(self.l10n_ve_global_discount_ids)
+
+    def _l10n_ve_product_order_lines(self, lines=None):
+        lines = lines or self.order_line
+        disc = self.company_id.sale_discount_product_id
+        return lines.filtered(
+            lambda line: (
+                not line.display_type
+                and not line.is_downpayment
+                and (not disc or line.product_id != disc)
+            )
+        )
+
+    def _l10n_ve_product_subtotal(self, lines, qty_field="product_uom_qty"):
+        self.ensure_one()
+        subtotal = 0.0
+        for line in lines:
+            if line.display_type or line.is_downpayment:
+                continue
+            qty = getattr(line, qty_field, 0.0)
+            rounding = line.product_uom.rounding if line.product_uom else 1e-9
+            if float_is_zero(qty, precision_rounding=rounding):
+                continue
+            price_reduce = line.price_unit * (1 - (line.discount or 0.0) / 100.0)
+            subtotal += price_reduce * qty
+        return subtotal
+
+    def _l10n_ve_subtotal_by_taxes_from_base_lines(self, base_lines):
+        AccountTax = self.env["account.tax"]
+        product_lines = self._l10n_ve_product_base_lines_for_discount(base_lines)
+        lines_needing_details = [
+            base_line for base_line in product_lines if not base_line.get("tax_details")
+        ]
+        if lines_needing_details:
+            AccountTax._add_tax_details_in_base_lines(lines_needing_details, self.company_id)
+        totals = defaultdict(float)
+        for base_line in product_lines:
+            taxes = base_line["tax_ids"].filtered(
+                lambda tax: tax.amount_type != "fixed"
+            )
+            quantity = base_line.get("quantity") or 0.0
+            if float_is_zero(quantity, precision_rounding=1e-9):
+                continue
+            tax_details = base_line.get("tax_details") or {}
+            if "total_excluded_currency" in tax_details:
+                line_subtotal = tax_details["total_excluded_currency"]
+            elif "raw_total_excluded_currency" in tax_details:
+                line_subtotal = tax_details["raw_total_excluded_currency"]
+            else:
+                price_unit = base_line.get("price_unit") or 0.0
+                discount = base_line.get("discount") or 0.0
+                price_reduce = price_unit * (1 - discount / 100.0)
+                line_subtotal = price_reduce * quantity
+            totals[taxes] += line_subtotal
+        return totals
+
+    def _l10n_ve_product_base_lines_for_discount(self, base_lines):
+        return [
+            base_line
+            for base_line in base_lines
+            if not base_line.get("special_type")
+        ]
+
+    def _l10n_ve_non_product_base_lines(self, base_lines):
+        return [
+            base_line
+            for base_line in base_lines
+            if base_line.get("special_type") in ("early_payment", "cash_rounding")
+        ]
+
+    def _l10n_ve_build_global_discount_base_lines(self, base_lines):
+        self.ensure_one()
+        if not self.l10n_ve_global_discount_ids:
+            return []
+
+        subtotal_by_taxes = self._l10n_ve_subtotal_by_taxes_from_base_lines(base_lines)
+        if not subtotal_by_taxes:
+            return []
+
+        line_currency = base_lines[0]["currency_id"] if base_lines else self.currency_id
+        rate = self.currency_rate or 1.0
+
+        AccountTax = self.env["account.tax"]
+        discount_base_lines = []
+        sequence = 0
+        running = dict(subtotal_by_taxes)
+        for discount, discount_amount in self._l10n_ve_sequential_global_discount_amounts(
+            subtotal_by_taxes
+        ):
+            tax_groups = list(running.keys())
+            weights = [running[taxes] for taxes in tax_groups]
+            parts = self._l10n_ve_split_amount_by_weights(discount_amount, weights)
+            for taxes, part in zip(tax_groups, parts):
+                if float_is_zero(part, precision_rounding=line_currency.rounding):
+                    continue
+                sequence += 1
+                discount_base_lines.append(
+                    AccountTax._prepare_base_line_for_taxes_computation(
+                        {
+                            "id": f"l10n_ve_global_discount_{discount.id}_{sequence}",
+                            "tax_ids": taxes,
+                            "price_unit": -part,
+                            "quantity": 1.0,
+                            "currency_id": line_currency,
+                            "name": discount.name,
+                        },
+                        special_type="global_discount",
+                        special_mode="total_excluded",
+                        sign=1,
+                        rate=rate,
+                    )
+                )
+                running[taxes] = max(0.0, running[taxes] - part)
+        return discount_base_lines
+
+    def _l10n_ve_apply_global_discount_to_base_lines(self, base_lines):
+        self.ensure_one()
+        if not self._l10n_ve_global_discount_applies():
+            return base_lines
+
+        AccountTax = self.env["account.tax"]
+        product_lines = self._l10n_ve_product_base_lines_for_discount(base_lines)
+        special_lines = self._l10n_ve_non_product_base_lines(base_lines)
+        AccountTax._add_tax_details_in_base_lines(product_lines, self.company_id)
+        discount_lines = self._l10n_ve_build_global_discount_base_lines(product_lines)
+        if not discount_lines:
+            return base_lines
+
+        working_lines = product_lines + discount_lines
+        AccountTax._add_tax_details_in_base_lines(discount_lines, self.company_id)
+        AccountTax._round_base_lines_tax_details(working_lines, self.company_id)
+        working_lines = AccountTax._dispatch_global_discount_lines(
+            working_lines, self.company_id
+        )
+        AccountTax._squash_global_discount_lines(working_lines, self.company_id)
+        AccountTax._add_and_round_raw_gross_total_excluded_and_discount(
+            working_lines,
+            self.company_id,
+            account_discount_base_lines=True,
+        )
+        AccountTax._add_and_round_raw_gross_total_excluded_and_discount(
+            working_lines,
+            self.company_id,
+            in_foreign_currency=False,
+            account_discount_base_lines=True,
+        )
+        all_lines = working_lines + special_lines
+        AccountTax._round_base_lines_tax_details(all_lines, self.company_id)
+        return all_lines
+
+    def _l10n_ve_get_computation_base_lines(self):
+        self.ensure_one()
+        order_lines = self._get_priced_lines()
+        base_lines = [
+            line._prepare_base_line_for_taxes_computation() for line in order_lines
+        ]
+        base_lines += self._add_base_lines_for_early_payment_discount()
+        return self._l10n_ve_apply_global_discount_to_base_lines(base_lines)
+
+    def _l10n_ve_global_discount_subtotal_by_taxes(self):
+        self.ensure_one()
+        order_lines = self._get_priced_lines()
+        base_lines = [
+            line._prepare_base_line_for_taxes_computation() for line in order_lines
+        ]
+        base_lines += self._add_base_lines_for_early_payment_discount()
+        return self._l10n_ve_subtotal_by_taxes_from_base_lines(
+            self._l10n_ve_product_base_lines_for_discount(base_lines)
+        )
+
+    def _l10n_ve_discount_amounts_for_invoiceable(self, invoiceable_lines):
+        self.ensure_one()
+        product_lines = self._l10n_ve_product_order_lines(invoiceable_lines)
+        uninvoiced_subtotal = self._l10n_ve_product_subtotal(
+            self._l10n_ve_product_order_lines(self.order_line),
+            qty_field="qty_to_invoice",
+        )
+        invoiceable_subtotal = self._l10n_ve_product_subtotal(
+            product_lines,
+            qty_field="qty_to_invoice",
+        )
+        if float_is_zero(uninvoiced_subtotal, precision_rounding=self.currency_id.rounding):
+            return {}
+        ratio = invoiceable_subtotal / uninvoiced_subtotal
+        amounts = {}
+        for discount in self.l10n_ve_global_discount_ids:
+            remaining = discount.amount - discount.amount_invoiced
+            if float_is_zero(remaining, precision_rounding=self.currency_id.rounding):
+                continue
+            amount = self.currency_id.round(remaining * ratio)
+            if amount:
+                amounts[discount.id] = amount
+        return amounts
+
+    def _l10n_ve_create_move_global_discounts(self, moves, discount_alloc):
+        Discount = self.env["l10n.ve.account.move.discount"]
+        for move in moves:
+            for discount_id, amount in discount_alloc.items():
+                if float_is_zero(amount, precision_rounding=self.currency_id.rounding):
+                    continue
+                sale_discount = self.env["l10n.ve.sale.order.discount"].browse(
+                    discount_id
+                )
+                Discount.create(
+                    {
+                        "move_id": move.id,
+                        "reason_id": sale_discount.reason_id.id,
+                        "amount": amount,
+                        "discount_type": sale_discount.discount_type,
+                        "discount_percentage": sale_discount.discount_percentage,
+                        "l10n_ve_sale_discount_id": sale_discount.id,
+                    }
+                )
+
     def _l10n_ve_get_max_invoice_lines_from_book(self):
         self.ensure_one()
         journal = self.journal_id
         if not journal:
+            return 0
+        if journal.l10n_ve_emission_medium == "fiscal_machine":
             return 0
         book = journal.l10n_ve_invoice_section_id.book_id
         if journal.l10n_ve_emission_medium == "free" and book:
@@ -137,6 +436,8 @@ class SaleOrder(models.Model):
 
     def _l10n_ve_global_discount_lines(self, invoiceable_lines):
         self.ensure_one()
+        if self.l10n_ve_global_discount_ids:
+            return self.env["sale.order.line"]
         disc = self.company_id.sale_discount_product_id
         if not disc:
             return self.env["sale.order.line"]
@@ -236,9 +537,50 @@ class SaleOrder(models.Model):
                 chunks.append(down_ids)
         return [invoiceable_lines.browse(ids) for ids in chunks]
 
+    def _l10n_ve_chunk_product_subtotal(self, chunk_lines):
+        return self._l10n_ve_product_subtotal(
+            chunk_lines,
+            qty_field="qty_to_invoice",
+        )
+
     def _l10n_ve_invoiceable_line_chunks(self, final):
         self.ensure_one()
         invoiceable_lines = super()._get_invoiceable_lines(final)
+        if not self.l10n_ve_global_discount_ids:
+            return self._l10n_ve_invoiceable_line_chunks_legacy(invoiceable_lines, final)
+        disc_lines = self._l10n_ve_global_discount_lines(invoiceable_lines)
+        lines_wo_disc = invoiceable_lines - disc_lines
+        max_lines = self._l10n_ve_get_max_invoice_lines_from_book()
+        if (
+            max_lines <= 0
+            or self._l10n_ve_product_line_count_invoiceable(lines_wo_disc) <= max_lines
+        ):
+            discount_amounts = self._l10n_ve_discount_amounts_for_invoiceable(
+                lines_wo_disc
+            )
+            return [(lines_wo_disc, discount_amounts)]
+        core_chunks = self._l10n_ve_split_invoiceable_lines(lines_wo_disc, max_lines)
+        run_discount_amounts = self._l10n_ve_discount_amounts_for_invoiceable(
+            lines_wo_disc
+        )
+        if not run_discount_amounts:
+            return [(chunk, {}) for chunk in core_chunks]
+        weights = [self._l10n_ve_chunk_product_subtotal(chunk) for chunk in core_chunks]
+        out = []
+        for i, chunk in enumerate(core_chunks):
+            alloc = {}
+            for discount_id, total_amount in run_discount_amounts.items():
+                parts = self._l10n_ve_split_amount_by_weights(total_amount, weights)
+                part = parts[i]
+                if not float_is_zero(
+                    part, precision_rounding=10 ** (-self.currency_id.decimal_places)
+                ):
+                    alloc[discount_id] = part
+            out.append((chunk, alloc))
+        return out
+
+    def _l10n_ve_invoiceable_line_chunks_legacy(self, invoiceable_lines, final):
+        self.ensure_one()
         max_lines = self._l10n_ve_get_max_invoice_lines_from_book()
         if (
             max_lines <= 0
@@ -272,7 +614,9 @@ class SaleOrder(models.Model):
                 if not parts:
                     continue
                 part = parts[i]
-                if float_is_zero(part, precision_rounding=10 ** (-self.currency_id.decimal_places)):
+                if float_is_zero(
+                    part, precision_rounding=10 ** (-self.currency_id.decimal_places)
+                ):
                     continue
                 alloc[dline.id] = part
                 extra_ids.append(dline.id)
@@ -292,6 +636,39 @@ class SaleOrder(models.Model):
             lines = lines.filtered(lambda line: line.id in id_set)
         return lines
 
+    def action_open_discount_wizard(self):
+        self.ensure_one()
+        if self.country_code == "VE":
+            return {
+                "name": _("Descuento global"),
+                "type": "ir.actions.act_window",
+                "res_model": "sale.order.discount",
+                "view_mode": "form",
+                "target": "new",
+                "context": {
+                    "default_sale_order_id": self.id,
+                    "default_l10n_ve_discount_mode": "percentage",
+                    **(
+                        {"default_l10n_ve_discount_reason_id": default_reason.id}
+                        if (
+                            default_reason := self.env[
+                                "l10n.ve.discount.reason"
+                            ]._l10n_ve_get_default()
+                        )
+                        else {}
+                    ),
+                },
+                "views": [
+                    (
+                        self.env.ref(
+                            "l10n_ve_seniat_sale.l10n_ve_sale_order_discount_wizard_view_form"
+                        ).id,
+                        "form",
+                    )
+                ],
+            }
+        return super().action_open_discount_wizard()
+
     def action_l10n_ve_create_invoice(self):
         orders = self.filtered(lambda order: order.country_code == "VE")
         if not orders:
@@ -300,6 +677,53 @@ class SaleOrder(models.Model):
             )
         invoices = orders._create_invoices(final=True, grouped=False)
         return orders.action_view_invoice(invoices=invoices)
+
+    def action_l10n_ve_fix_discount_invoicing_rounding(self):
+        orders = self.filtered(
+            lambda order: order.state in ("sale", "done") and order.country_code == "VE"
+        )
+        if not orders:
+            candidates = self.search(
+                [
+                    ("state", "in", ("sale", "done")),
+                    ("invoice_status", "=", "to invoice"),
+                ]
+            )
+            orders = candidates.filtered(lambda order: order.country_code == "VE")
+        if not orders:
+            raise UserError(
+                _("No hay pedidos venezolanos confirmados pendientes de corrección.")
+            )
+        fixed_lines = orders.order_line._l10n_ve_fix_discount_invoicing_rounding()
+        fixed_orders = fixed_lines.order_id
+        if not fixed_orders:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Sin cambios"),
+                    "message": _(
+                        "Ningún pedido requirió corrección de redondeo en líneas de descuento."
+                    ),
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Corrección aplicada"),
+                "message": _(
+                    "Se corrigieron %(lines)s línea(s) de descuento en %(orders)s pedido(s): %(names)s",
+                    lines=len(fixed_lines),
+                    orders=len(fixed_orders),
+                    names=", ".join(fixed_orders.mapped("name")),
+                ),
+                "type": "success",
+                "sticky": False,
+            },
+        }
 
     def _create_invoices(self, grouped=False, final=False, date=None):
         if not self.env["account.move"].has_access("create"):
@@ -315,24 +739,37 @@ class SaleOrder(models.Model):
             else self.env["account.move"]
         )
         for order in ve:
+            order._l10n_ve_refresh_global_discounts_from_lines()
             chunk_specs = order._l10n_ve_invoiceable_line_chunks(final)
             if len(chunk_specs) <= 1:
-                _chunk, alloc = chunk_specs[0]
+                chunk, discount_alloc = chunk_specs[0]
                 ctx = {}
-                if alloc:
-                    ctx["l10n_ve_discount_amount_allocation"] = alloc
-                moves |= super(SaleOrder, order.with_context(**ctx))._create_invoices(
-                    grouped=False, final=final, date=date
-                )
+                if chunk != order._get_invoiceable_lines(final):
+                    ctx["l10n_ve_invoiceable_line_ids"] = tuple(chunk.ids)
+                if discount_alloc and not order.l10n_ve_global_discount_ids:
+                    ctx["l10n_ve_discount_amount_allocation"] = discount_alloc
+                chunk_moves = super(
+                    SaleOrder, order.with_context(**ctx)
+                )._create_invoices(grouped=False, final=final, date=date)
+                if discount_alloc and order.l10n_ve_global_discount_ids:
+                    order._l10n_ve_create_move_global_discounts(
+                        chunk_moves, discount_alloc
+                    )
+                moves |= chunk_moves
             else:
-                for chunk, alloc in chunk_specs:
+                for chunk, discount_alloc in chunk_specs:
                     ctx = {"l10n_ve_invoiceable_line_ids": tuple(chunk.ids)}
-                    if alloc:
-                        ctx["l10n_ve_discount_amount_allocation"] = alloc
-                    moves |= super(
+                    if discount_alloc and not order.l10n_ve_global_discount_ids:
+                        ctx["l10n_ve_discount_amount_allocation"] = discount_alloc
+                    chunk_moves = super(
                         SaleOrder,
                         order.with_context(**ctx),
                     )._create_invoices(grouped=False, final=final, date=date)
+                    if discount_alloc and order.l10n_ve_global_discount_ids:
+                        order._l10n_ve_create_move_global_discounts(
+                            chunk_moves, discount_alloc
+                        )
+                    moves |= chunk_moves
         return moves
 
     def _l10n_ve_check_free_emission_correlatives(self):
@@ -459,21 +896,91 @@ class SaleOrder(models.Model):
                     )
         return super().action_confirm()
 
-    @api.depends_context("lang")
     @api.depends(
         "order_line.price_subtotal",
         "currency_id",
         "company_id",
         "payment_term_id",
+        "l10n_ve_global_discount_ids",
+        "l10n_ve_global_discount_ids.amount",
+    )
+    def _compute_amounts(self):
+        ve_with_discount = self.filtered(
+            lambda order: order.country_code == "VE" and order.l10n_ve_global_discount_ids
+        )
+        super(SaleOrder, self - ve_with_discount)._compute_amounts()
+        AccountTax = self.env["account.tax"]
+        for order in ve_with_discount:
+            base_lines = order._l10n_ve_get_computation_base_lines()
+            tax_totals = AccountTax._get_tax_totals_summary(
+                base_lines=base_lines,
+                currency=order.currency_id or order.company_id.currency_id,
+                company=order.company_id,
+            )
+            order.amount_untaxed = tax_totals["base_amount_currency"]
+            order.amount_tax = tax_totals["tax_amount_currency"]
+            order.amount_total = tax_totals["total_amount_currency"]
+
+    @api.depends_context("lang")
+    @api.depends(
+        "order_line.price_subtotal",
+        "order_line.product_id",
+        "currency_id",
+        "company_id",
+        "payment_term_id",
+        "l10n_ve_global_discount_ids",
+        "l10n_ve_global_discount_ids.amount",
     )
     def _compute_tax_totals(self):
-        res = super()._compute_tax_totals()
+        AccountTax = self.env["account.tax"]
+        ve_with_discount = self.filtered(
+            lambda order: order.country_code == "VE" and order.l10n_ve_global_discount_ids
+        )
+        super(SaleOrder, self - ve_with_discount)._compute_tax_totals()
+        for order in ve_with_discount:
+            base_lines = order._l10n_ve_get_computation_base_lines()
+            order.tax_totals = AccountTax._get_tax_totals_summary(
+                base_lines=base_lines,
+                currency=order.currency_id or order.company_id.currency_id,
+                company=order.company_id,
+            )
         for order in self:
             if (
                 order.company_id.account_fiscal_country_id.code != "VE"
                 or not order.tax_totals
             ):
                 continue
+            discount_totals = AccountTax._l10n_ve_get_global_discount_totals(
+                order,
+                order.tax_totals,
+            )
+            order.tax_totals["l10n_ve_show_global_discount"] = discount_totals[
+                "show_global_discount"
+            ]
+            order.tax_totals["l10n_ve_subtotal_gross_currency"] = discount_totals[
+                "subtotal_gross_currency"
+            ]
+            order.tax_totals["l10n_ve_subtotal_gross"] = discount_totals[
+                "subtotal_gross"
+            ]
+            order.tax_totals["l10n_ve_global_discount_amount_currency"] = (
+                discount_totals["global_discount_amount_currency"]
+            )
+            order.tax_totals["l10n_ve_global_discount_amount"] = discount_totals[
+                "global_discount_amount"
+            ]
+            order.tax_totals["l10n_ve_global_discount_amount_foreign"] = (
+                discount_totals["global_discount_amount_foreign"]
+            )
+            order.tax_totals["l10n_ve_subtotal_gross_foreign"] = discount_totals[
+                "subtotal_gross_foreign"
+            ]
+            order.tax_totals["l10n_ve_global_discount_lines"] = discount_totals[
+                "global_discount_lines"
+            ]
+            order.tax_totals["l10n_ve_global_discount_percentage"] = (
+                discount_totals["global_discount_percentage"]
+            )
             order.tax_totals["same_tax_base"] = False
             for subtotal in order.tax_totals.get("subtotals", []):
                 for tax_group in subtotal.get("tax_groups", []):
@@ -485,4 +992,3 @@ class SaleOrder(models.Model):
                         tax_group["display_base_amount"] = tax_group.get(
                             "base_amount", 0.0
                         )
-        return res

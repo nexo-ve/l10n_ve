@@ -28,31 +28,22 @@ class ResConfigSettings(models.TransientModel):
         readonly=False,
     )
 
-    exent_aliquot_sale = fields.Many2one(
-        "account.tax", related="company_id.exent_aliquot_sale", readonly=False
-    )
-    general_aliquot_sale = fields.Many2one(
-        "account.tax", related="company_id.general_aliquot_sale", readonly=False
-    )
-    reduced_aliquot_sale = fields.Many2one(
-        "account.tax", related="company_id.reduced_aliquot_sale", readonly=False
-    )
-    extend_aliquot_sale = fields.Many2one(
-        "account.tax", related="company_id.extend_aliquot_sale", readonly=False
-    )
-
-    exent_aliquot_purchase = fields.Many2one(
-        "account.tax", related="company_id.exent_aliquot_purchase", readonly=False
-    )
-    general_aliquot_purchase = fields.Many2one(
-        "account.tax", related="company_id.general_aliquot_purchase", readonly=False
-    )
-    reduced_aliquot_purchase = fields.Many2one(
-        "account.tax", related="company_id.reduced_aliquot_purchase", readonly=False
-    )
-    extend_aliquot_purchase = fields.Many2one(
-        "account.tax", related="company_id.extend_aliquot_purchase", readonly=False
-    )
+    def action_open_l10n_ve_tax_groups(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Grupos de impuestos"),
+            "res_model": "account.tax.group",
+            "view_mode": "list,form",
+            "domain": [
+                ("company_id", "=", self.company_id.id),
+                ("country_id.code", "=", "VE"),
+            ],
+            "context": {
+                "default_company_id": self.company_id.id,
+                "default_country_id": self.company_id.account_fiscal_country_id.id,
+            },
+        }
 
     l10n_ve_unfactured_dispatch_email_recipient = fields.Char(
         related="company_id.l10n_ve_unfactured_dispatch_email_recipient",

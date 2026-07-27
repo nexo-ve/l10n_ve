@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="l10n_ve_fiscal_serial.FiscalMachinePortDetectWidget">
+        <div class="o_l10n_ve_fiscal_machine_detect mb-3">
+            <button
+                type="button"
+                class="btn btn-primary"
+                t-on-click="onDetectPort"
+                t-att-disabled="state.busy"
+            >
+                Seleccionar puerto y detectar máquina
+            </button>
+            <div class="text-muted mt-2">
+                Se abrirá el selector de puertos COM/Web Serial del navegador. El sistema leerá
+                automáticamente el serial fiscal (S1), modelo (SV) y estado ENQ.
+            </div>
+        </div>
+    </t>
+</templates>

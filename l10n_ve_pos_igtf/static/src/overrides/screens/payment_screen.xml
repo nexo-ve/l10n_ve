@@ -2,17 +2,16 @@
 <templates id="template" xml:space="preserve">
     <t t-name="l10n_ve_pos_igtf.PaymentScreenDue" t-inherit="point_of_sale.PaymentScreenDue" t-inherit-mode="extension">
         <xpath expr="//div[hasclass('total')]" position="after">
-            <div t-if="currentOrder.company and currentOrder.company.l10n_ve_igtf_feature_active and currentOrder.is_to_invoice() and currentOrder.igtf_amount"
-                class="text-center py-2 border-top border-secondary-subtle">
-                <div class="small text-muted">
-                    IGTF (<t t-esc="currentOrder.company.l10n_ve_igtf_percent"/>%)
+            <div t-if="l10nVePosShowIgtf"
+                class="order-summary d-flex flex-column gap-2 px-3 pb-3 mx-auto w-100"
+                style="max-width: 24rem;">
+                <div class="d-flex justify-content-between align-items-baseline w-100 fs-4 text-muted fw-bolder lh-sm">
+                    <span t-esc="l10nVePosTotalLabel"/>
+                    <span t-esc="l10nVePosTotalWithoutIgtfText"/>
                 </div>
-                <div class="fw-semibold text-warning">
-                    + <t t-esc="env.utils.formatCurrency(currentOrder.igtf_amount)"/>
-                </div>
-                <div class="small text-muted mt-1">
-                    Total con IGTF:
-                    <strong class="text-success ms-1" t-esc="env.utils.formatCurrency(currentOrder.get_total_with_tax())"/>
+                <div class="d-flex justify-content-between align-items-baseline w-100 fs-4 fw-bolder lh-sm">
+                    <span t-esc="l10nVePosIgtfLabel"/>
+                    <span t-esc="l10nVePosIgtfAmountText"/>
                 </div>
             </div>
         </xpath>

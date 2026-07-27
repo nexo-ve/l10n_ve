@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_pos_pos_form_invoice_journal" model="ir.ui.view">
+        <field name="name">pos.order.form.invoice.journal</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='fiscal_position_id']" position="before">
+                <field
+                    name="invoice_journal_id"
+                    readonly="state != 'draft'"
+                    options="{'no_create': True}"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>

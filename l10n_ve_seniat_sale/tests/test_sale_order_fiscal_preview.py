@@ -12,7 +12,7 @@ class TestSaleOrderFiscalPreview(L10nVeSeniatCommon):
     def setUpClass(cls):
         super().setUpClass()
         cls.journal = cls.company_data["default_journal_sale"]
-        cls.journal.write({"l10n_ve_emission_medium": "fiscal_machine"})
+        cls._l10n_ve_configure_journal_fiscal_machine(cls.journal)
 
     def _create_ve_product(self, name, price):
         tmpl = self.env["product.template"].create(

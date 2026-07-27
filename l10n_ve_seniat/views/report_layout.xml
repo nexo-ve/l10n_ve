@@ -453,7 +453,7 @@
                                                                 style="border-bottom: 1px solid #6c757d;"
                                                             >
                                                                 <span
-                                                                    t-out="tax_totals.get('base_amount', 0)"
+                                                                    t-out="tax_totals.get('l10n_ve_subtotal_gross', tax_totals.get('base_amount', 0)) if tax_totals.get('l10n_ve_show_global_discount') else tax_totals.get('base_amount', 0)"
                                                                     t-options='{"widget": "monetary", "display_currency": comp_currency}'
                                                                 />
                                                             </td>
@@ -463,7 +463,43 @@
                                                             style="border-bottom: 1px solid #6c757d;"
                                                         >
                                                             <span
-                                                                t-out="tax_totals.get('base_amount_currency', 0)"
+                                                                t-out="tax_totals.get('l10n_ve_subtotal_gross_currency', tax_totals.get('base_amount_currency', 0)) if tax_totals.get('l10n_ve_show_global_discount') else tax_totals.get('base_amount_currency', 0)"
+                                                                t-options='{"widget": "monetary", "display_currency": doc_currency}'
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                    <tr t-if="tax_totals.get('l10n_ve_show_global_discount')">
+                                                        <td
+                                                            class="text-end pe-2 py-1"
+                                                            style="border-bottom: 1px solid #6c757d;"
+                                                        >
+                                                            Descuento
+                                                            <t
+                                                                t-if="tax_totals.get('l10n_ve_global_discount_percentage')"
+                                                            >
+                                                                (<t
+                                                                    t-out="'%.2f' % (tax_totals.get('l10n_ve_global_discount_percentage') * 100.0)"
+                                                                />%):
+                                                            </t>
+                                                            <t t-else="">:</t>
+                                                        </td>
+                                                        <t t-if="show_company_currency">
+                                                            <td
+                                                                class="text-end py-1 ps-2"
+                                                                style="border-bottom: 1px solid #6c757d;"
+                                                            >
+                                                                <span
+                                                                    t-out="-tax_totals.get('l10n_ve_global_discount_amount', 0.0)"
+                                                                    t-options='{"widget": "monetary", "display_currency": comp_currency}'
+                                                                />
+                                                            </td>
+                                                        </t>
+                                                        <td
+                                                            class="text-end py-1"
+                                                            style="border-bottom: 1px solid #6c757d;"
+                                                        >
+                                                            <span
+                                                                t-out="-tax_totals.get('l10n_ve_global_discount_amount_currency', 0.0)"
                                                                 t-options='{"widget": "monetary", "display_currency": doc_currency}'
                                                             />
                                                         </td>

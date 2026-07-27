@@ -34,8 +34,13 @@ class L10nVeAccountMoveDebitCreditWizard(models.TransientModel):
 
         self.ensure_one()
         invoice = self.move_id
-        if invoice.country_code != "VE" or invoice.move_type != "out_invoice":
-            raise UserError(_("Esta acción solo aplica a facturas de cliente (VE)."))
+        if (
+            invoice.country_code != "VE"
+            or not invoice._l10n_ve_is_invoice_for_credit_debit()
+        ):
+            raise UserError(
+                _("Esta acción solo aplica a facturas de cliente o proveedor (VE).")
+            )
         unreversed = invoice._l10n_ve_get_unreversed_debit_notes()
         invalid = self.debit_note_ids - unreversed
         if invalid:
@@ -61,7 +66,7 @@ class L10nVeAccountMoveDebitCreditWizard(models.TransientModel):
             .with_context(l10n_ve_credit_note_for_debit_note=True)
             .create(
                 {
-                    "move_type": "out_refund",
+                    "move_type": invoice._l10n_ve_refund_move_type(),
                     "reversed_entry_id": invoice.id,
                     "partner_id": invoice.partner_id.id,
                     "journal_id": invoice.journal_id.id,

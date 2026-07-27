@@ -16,6 +16,8 @@ class SaleOrder(models.Model):
             journal = order.journal_id
             if not journal:
                 continue
+            if journal.l10n_ve_emission_medium == "fiscal_machine":
+                continue
             section = journal.l10n_ve_invoice_section_id
             book = section.book_id if section else False
             if book:

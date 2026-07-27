@@ -22,6 +22,7 @@ import {
     mfReportzFromDailyClosureString,
     parseTfhkaS1StatusResponse,
 } from "./tfhka_s1_parser";
+import { readWebSerialPortInfo } from "./tfhka_transport_webserial";
 
 const ENQ_READ_OPTS = {
     byteTimeout: 280,
@@ -32,6 +33,7 @@ const ENQ_READ_OPTS = {
 const STATUS_MESSAGES = {
     0: "Unknown status",
     48: "Printer status (0x30)",
+    64: describeTfhkaEnqSts1(0x40),
     66: describeTfhkaEnqSts1(0x42),
     68: describeTfhkaEnqSts1(0x44),
     96: describeTfhkaEnqSts1(0x60),
@@ -93,10 +95,36 @@ export class TfhkaFiscal {
         this.dataLectorFisc = [];
         this._lastEnqByteCount = 0;
         this._lastEnqHeadHex = "";
+        this.portInfo = null;
+        this._lastOpenBaudRate = 9600;
+        this._lastOpenParity = "even";
+        this.auditLogger = null;
+    }
+
+    async _auditPortOpenFailure(estado) {
+        if (!this.auditLogger) {
+            return;
+        }
+        this.auditLogger.logPortOpen(this, {
+            success: false,
+            errorMessage: estado,
+        });
+        this.auditLogger.logPortClose(this, "open_failed", estado);
+        await this.auditLogger.flush();
+    }
+
+    async _auditPortOpenSuccess() {
+        if (!this.auditLogger) {
+            return;
+        }
+        this.auditLogger.logPortOpen(this, { success: true });
     }
 
     _consoleLogCommand(step, payload) {
         console.log("[l10n_ve_fiscal_serial][tfhka_serial]", step, payload);
+        if (this.auditLogger) {
+            this.auditLogger.logCommandEvent(this, step, payload);
+        }
     }
 
     reiniciarVariables() {
@@ -296,7 +324,10 @@ export class TfhkaFiscal {
                 bufferSize: 512,
                 flowControl: "none",
             });
-            this.comPort = "web-serial";
+            this._lastOpenBaudRate = baudRate;
+            this._lastOpenParity = parity;
+            this.portInfo = readWebSerialPortInfo(port);
+            this.comPort = this.portInfo.label || "web-serial";
             this.usandoLineasControl = false;
             this.usandoRTS_CTS = false;
             this.usandoDSR_DTR = false;
@@ -311,12 +342,14 @@ export class TfhkaFiscal {
                     this.usandoLineasControl = true;
                     this.usandoRTS_CTS = false;
                     this.usandoDSR_DTR = true;
+                    await this._auditPortOpenSuccess();
                     return true;
                 }
                 if (await this._manipulaCTSRTS()) {
                     this.usandoLineasControl = true;
                     this.usandoRTS_CTS = true;
                     this.usandoDSR_DTR = false;
+                    await this._auditPortOpenSuccess();
                     return true;
                 }
             }
@@ -327,16 +360,19 @@ export class TfhkaFiscal {
                     dataTerminalReady: false,
                     requestToSend: false,
                 });
+                await this._auditPortOpenSuccess();
                 return true;
             }
             this.estado =
                 this._lastEnqByteCount > 0
                     ? `ENQ devolvió ${this._lastEnqByteCount} byte(s) (${this._lastEnqHeadHex}); se requieren 5. En Linux/USB los bytes a veces llegan espaciados: use en Odoo la misma paridad y baud que en su prueba (p. ej. 8E1 si el manual indica par).`
                     : "ENQ no devolvió bytes a tiempo. Revise paridad, baudios, cable y que el puerto esté libre.";
+            await this._auditPortOpenFailure(this.estado);
             await this.transport.close();
             return false;
         } catch (e) {
             this.estado = "Error..." + formatWebSerialError(e);
+            await this._auditPortOpenFailure(this.estado);
             try {
                 await this.transport.close();
             } catch {
@@ -345,7 +381,15 @@ export class TfhkaFiscal {
         }
     }
 
-    async closeFpCtrl() {
+    async closeFpCtrl(options = {}) {
+        if (!options.skipAudit && this.auditLogger) {
+            this.auditLogger.logPortClose(
+                this,
+                options.reason || "unknown",
+                options.detail || this.estado || ""
+            );
+            await this.auditLogger.flush();
+        }
         await this.transport.close();
     }
 

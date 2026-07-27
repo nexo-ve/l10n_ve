@@ -7,9 +7,10 @@ export const NAK = 0x15;
 export const TFHKA_ENQ_STS2_NINGUN_ERROR = 0x40;
 
 const TFHKA_ENQ_STS1_DESC = {
-    0x60: "Modo fiscal (inactiva en transacción)",
+    0x40: "Modo entrenamiento y en espera",
+    0x60: "Modo fiscal y en espera",
     0x61: "Modo fiscal y en transacción fiscal",
-    0x42: "Sin transacción fiscal",
+    0x42: "Modo entrenamiento, transacción no fiscal",
     0x44: "Ocupada, búfer lleno",
 };
 
@@ -33,7 +34,7 @@ export function isTfhkaEnqSts1Operativa(byte) {
     if (b === 0x44) {
         return false;
     }
-    return b === 0x60 || b === 0x61 || b === 0x42;
+    return b === 0x40 || b === 0x60 || b === 0x61 || b === 0x42;
 }
 
 export function encodeLatin1(str) {

@@ -28,7 +28,7 @@ class AccountMove(models.Model):
         for move in self:
             if (
                 move.country_code != ve_country
-                or move.move_type not in ("out_refund", "in_refund")
+                or move.move_type != "out_refund"
                 or move.currency_id == move.company_currency_id
                 or not move._l10n_ve_requires_refund_company_currency()
             ):
@@ -119,7 +119,7 @@ class AccountMove(models.Model):
         ve_code = self.env.ref("base.ve").code
         to_company_refund = self.filtered(
             lambda m: m.country_code == ve_code
-            and m.move_type in ("out_refund", "in_refund")
+            and m.move_type == "out_refund"
             and m.state == "draft"
             and m.reversed_entry_id
             and m.currency_id != m.company_currency_id
@@ -132,7 +132,7 @@ class AccountMove(models.Model):
         for move in self:
             if (
                 move.country_code == ve_code
-                and move.move_type in ("out_refund", "in_refund")
+                and move.move_type == "out_refund"
                 and move.currency_id != move.company_currency_id
                 and move._l10n_ve_requires_refund_company_currency()
             ):

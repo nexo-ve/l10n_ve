@@ -33,6 +33,44 @@ export function formatWebSerialError(err) {
     return base || name || "Error desconocido.";
 }
 
+export function formatWebSerialPortLabel(portInfo = {}) {
+    const parts = [];
+    if (portInfo.usbVendorId) {
+        parts.push(`USB:${portInfo.usbVendorId.toString(16).padStart(4, "0")}`);
+    }
+    if (portInfo.usbProductId) {
+        parts.push(portInfo.usbProductId.toString(16).padStart(4, "0"));
+    }
+    if (portInfo.usbSerialNumber) {
+        parts.push(portInfo.usbSerialNumber);
+    }
+    if (parts.length) {
+        return parts.join("-");
+    }
+    return "Web Serial";
+}
+
+export function readWebSerialPortInfo(port) {
+    if (!port?.getInfo) {
+        return {
+            usbVendorId: null,
+            usbProductId: null,
+            usbSerialNumber: null,
+            label: "Web Serial",
+        };
+    }
+    const info = port.getInfo();
+    const portInfo = {
+        usbVendorId: info.usbVendorId ?? null,
+        usbProductId: info.usbProductId ?? null,
+        usbSerialNumber: info.usbSerialNumber ?? null,
+    };
+    return {
+        ...portInfo,
+        label: formatWebSerialPortLabel(portInfo),
+    };
+}
+
 function mergeUint8Arrays(chunks) {
     let n = 0;
     for (const c of chunks) {

@@ -430,7 +430,7 @@ class AccountMove(models.Model):
         for move in self:
             move.l10n_ve_show_unreversed_debit_note_alert = False
             move.l10n_ve_unreversed_debit_note_count = 0
-            if move.country_code != "VE" or move.move_type != "out_invoice":
+            if move.country_code != "VE" or not move._l10n_ve_is_invoice_for_credit_debit():
                 continue
             if move.state != "posted":
                 continue
@@ -447,8 +447,21 @@ class AccountMove(models.Model):
             return origin.l10n_ve_journal_emission_medium
         return self.l10n_ve_journal_emission_medium
 
+    def _l10n_ve_is_invoice_for_credit_debit(self):
+        self.ensure_one()
+        return self.move_type in ("out_invoice", "in_invoice")
+
+    def _l10n_ve_refund_move_type(self):
+        self.ensure_one()
+        return {
+            "out_invoice": "out_refund",
+            "in_invoice": "in_refund",
+        }.get(self.move_type)
+
     def _l10n_ve_invoice_emitted_for_credit_debit(self):
         self.ensure_one()
+        if self.move_type == "in_invoice":
+            return True
         medium = self.l10n_ve_journal_emission_medium
         if not medium or medium == "contingency":
             return True
@@ -465,7 +478,7 @@ class AccountMove(models.Model):
 
     def _l10n_ve_allows_credit_debit_actions(self):
         self.ensure_one()
-        if self.move_type != "out_invoice":
+        if not self._l10n_ve_is_invoice_for_credit_debit():
             return False
         if self.debit_origin_id:
             return False
@@ -481,17 +494,19 @@ class AccountMove(models.Model):
             return False
         if self.debit_origin_id:
             return False
-        if self.move_type != "out_invoice":
+        if not self._l10n_ve_is_invoice_for_credit_debit():
             return False
         if self.country_code != "VE":
             return self.state == "posted"
         if self.state != "posted":
             return False
-        if self._l10n_ve_has_full_posted_credit_on_invoice():
-            return False
-        if self._l10n_ve_has_full_posted_credit_note():
-            return False
-        return self._l10n_ve_invoice_emitted_for_credit_debit()
+        if self.move_type == "out_invoice":
+            if self._l10n_ve_has_full_posted_credit_on_invoice():
+                return False
+            if self._l10n_ve_has_full_posted_credit_note():
+                return False
+            return self._l10n_ve_invoice_emitted_for_credit_debit()
+        return True
 
     def _l10n_ve_allows_debit_note_action(self):
         self.ensure_one()
@@ -499,11 +514,11 @@ class AccountMove(models.Model):
             return False
         if self.debit_origin_id:
             return False
-        if self.move_type != "out_invoice":
+        if not self._l10n_ve_is_invoice_for_credit_debit():
             return False
-        if self.country_code == "VE":
+        if self.country_code == "VE" and self.move_type == "out_invoice":
             posted_debits = self.debit_note_ids.filtered(
-                lambda m: m.state == "posted" and m.move_type == "out_invoice"
+                lambda m: m.state == "posted" and m.move_type == self.move_type
             )
             if self._l10n_ve_get_unreversed_debit_notes():
                 return False
@@ -515,6 +530,8 @@ class AccountMove(models.Model):
             return self.state == "posted"
         if self.state != "posted":
             return False
+        if self.move_type == "in_invoice":
+            return True
         return self._l10n_ve_invoice_emitted_for_credit_debit()
 
     def _l10n_ve_check_credit_note_creation_allowed(self):
@@ -585,7 +602,7 @@ class AccountMove(models.Model):
                 )
             if move.move_type == "out_invoice":
                 posted_debits = move.debit_note_ids.filtered(
-                    lambda m: m.state == "posted" and m.move_type == "out_invoice"
+                    lambda m: m.state == "posted" and m.move_type == move.move_type
                 )
                 if move._l10n_ve_get_unreversed_debit_notes():
                     raise UserError(
@@ -626,7 +643,9 @@ class AccountMove(models.Model):
         """
 
         for move in self:
-            if move.country_code != "VE" or move.move_type != "out_invoice":
+            if move.country_code != "VE" or not move._l10n_ve_is_invoice_for_credit_debit():
+                continue
+            if move.move_type == "in_invoice":
                 continue
             if move.debit_origin_id:
                 continue
@@ -703,14 +722,15 @@ class AccountMove(models.Model):
 
     def _l10n_ve_posted_credit_on_invoice_company_amount(self):
         self.ensure_one()
-        if self.move_type != "out_invoice":
+        if not self._l10n_ve_is_invoice_for_credit_debit():
             return 0.0
+        refund_type = self._l10n_ve_refund_move_type()
         company_cur = self.company_currency_id
         total = 0.0
         posted_credits = self.reversal_move_ids.filtered(
             lambda m: (
                 m.state == "posted"
-                and m.move_type == "out_refund"
+                and m.move_type == refund_type
                 and not m.l10n_ve_debit_note_reversed_ids
             )
         )
@@ -722,7 +742,7 @@ class AccountMove(models.Model):
 
     def _l10n_ve_has_full_posted_credit_on_invoice(self):
         self.ensure_one()
-        if self.move_type != "out_invoice":
+        if not self._l10n_ve_is_invoice_for_credit_debit():
             return False
         company_cur = self.company_currency_id
         limit = self._l10n_ve_to_company_abs_untaxed_amount()
@@ -735,11 +755,12 @@ class AccountMove(models.Model):
 
     def _l10n_ve_debit_note_is_reversed(self, debit_note):
         self.ensure_one()
+        refund_type = self._l10n_ve_refund_move_type()
         return bool(
             self.reversal_move_ids.filtered(
                 lambda m: (
                     m.state == "posted"
-                    and m.move_type == "out_refund"
+                    and m.move_type == refund_type
                     and debit_note in m.l10n_ve_debit_note_reversed_ids
                 )
             )
@@ -747,25 +768,26 @@ class AccountMove(models.Model):
 
     def _l10n_ve_get_unreversed_debit_notes(self):
         self.ensure_one()
-        if self.move_type != "out_invoice":
+        if not self._l10n_ve_is_invoice_for_credit_debit():
             return self.env["account.move"]
         return self.debit_note_ids.filtered(
             lambda m: (
                 m.state == "posted"
-                and m.move_type == "out_invoice"
+                and m.move_type == self.move_type
                 and not self._l10n_ve_debit_note_is_reversed(m)
             )
         )
 
     def _l10n_ve_posted_credit_for_debit_notes_company_amount(self, debit_notes=None):
         self.ensure_one()
-        if self.move_type != "out_invoice":
+        if not self._l10n_ve_is_invoice_for_credit_debit():
             return 0.0
+        refund_type = self._l10n_ve_refund_move_type()
         company_cur = self.company_currency_id
         debit_notes = debit_notes or self.debit_note_ids
         total = 0.0
         for credit in self.reversal_move_ids.filtered(
-            lambda m: m.state == "posted" and m.move_type == "out_refund"
+            lambda m: m.state == "posted" and m.move_type == refund_type
         ):
             linked_debits = credit.l10n_ve_debit_note_reversed_ids & debit_notes
             if not linked_debits:
@@ -775,12 +797,12 @@ class AccountMove(models.Model):
 
     def _l10n_ve_max_credit_note_company_amount(self):
         self.ensure_one()
-        if self.move_type != "out_invoice":
+        if not self._l10n_ve_is_invoice_for_credit_debit():
             return 0.0
         company_cur = self.company_currency_id
         limit = self._l10n_ve_to_company_abs_amount()
         debit_notes = self.debit_note_ids.filtered(
-            lambda m: m.state == "posted" and m.move_type == "out_invoice"
+            lambda m: m.state == "posted" and m.move_type == self.move_type
         )
         for debit in debit_notes:
             limit = company_cur.round(limit + debit._l10n_ve_to_company_abs_amount())
@@ -788,12 +810,13 @@ class AccountMove(models.Model):
 
     def _l10n_ve_posted_credit_notes_company_amount(self):
         self.ensure_one()
-        if self.move_type != "out_invoice":
+        if not self._l10n_ve_is_invoice_for_credit_debit():
             return 0.0
+        refund_type = self._l10n_ve_refund_move_type()
         company_cur = self.company_currency_id
         total = 0.0
         posted_credits = self.reversal_move_ids.filtered(
-            lambda m: m.state == "posted" and m.move_type == "out_refund"
+            lambda m: m.state == "posted" and m.move_type == refund_type
         )
         for credit in posted_credits:
             total = company_cur.round(total + credit._l10n_ve_to_company_abs_amount())
@@ -801,7 +824,7 @@ class AccountMove(models.Model):
 
     def _l10n_ve_has_full_posted_credit_note(self):
         self.ensure_one()
-        if self.move_type != "out_invoice":
+        if not self._l10n_ve_is_invoice_for_credit_debit():
             return False
         company_cur = self.company_currency_id
         limit = self._l10n_ve_max_credit_note_company_amount()
@@ -844,12 +867,20 @@ class AccountMove(models.Model):
     def action_l10n_ve_view_credit_notes(self):
         self.ensure_one()
         moves = self._l10n_ve_get_related_credit_note_moves() - self
+        refund_type = (
+            self._l10n_ve_refund_move_type()
+            or (
+                "in_refund"
+                if self.move_type in ("in_invoice", "in_refund")
+                else "out_refund"
+            )
+        )
         action = {
             "type": "ir.actions.act_window",
             "name": _("Notas de crédito"),
             "res_model": "account.move",
             "domain": [("id", "in", moves.ids)],
-            "context": {"default_move_type": "out_refund"},
+            "context": {"default_move_type": refund_type},
         }
         if len(moves) == 1:
             action.update({"views": [(False, "form")], "res_id": moves.id})
@@ -859,8 +890,10 @@ class AccountMove(models.Model):
 
     def action_l10n_ve_open_credit_note_for_debit_notes(self):
         self.ensure_one()
-        if self.country_code != "VE" or self.move_type != "out_invoice":
-            raise UserError(_("Esta acción solo aplica a facturas de cliente (VE)."))
+        if self.country_code != "VE" or not self._l10n_ve_is_invoice_for_credit_debit():
+            raise UserError(
+                _("Esta acción solo aplica a facturas de cliente o proveedor (VE).")
+            )
         unreversed = self._l10n_ve_get_unreversed_debit_notes()
         if not unreversed:
             raise UserError(
@@ -911,13 +944,13 @@ class AccountMove(models.Model):
 
     def _l10n_ve_credit_note_limit_company_amount(self):
         self.ensure_one()
-        if self.move_type != "out_refund" or not self.reversed_entry_id:
+        if self.move_type not in ("out_refund", "in_refund") or not self.reversed_entry_id:
             return 0.0
         return self.reversed_entry_id._l10n_ve_max_credit_note_company_amount()
 
     def _l10n_ve_credit_note_accumulated_company_amount(self, include_current=False):
         self.ensure_one()
-        if self.move_type != "out_refund" or not self.reversed_entry_id:
+        if self.move_type not in ("out_refund", "in_refund") or not self.reversed_entry_id:
             return 0.0
         company_cur = self.company_currency_id
         origin = self.reversed_entry_id
@@ -1853,21 +1886,9 @@ Please create a credit note instead.
             multiplier = -1 if move.move_type == "out_refund" else 1
 
             company = move.company_id
-            tax_config = {}
-            if hasattr(company, "exent_aliquot_sale") and company.exent_aliquot_sale:
-                tax_config["exempt"] = company.exent_aliquot_sale.tax_group_id.id
-            if (
-                hasattr(company, "reduced_aliquot_sale")
-                and company.reduced_aliquot_sale
-            ):
-                tax_config["reduced"] = company.reduced_aliquot_sale.tax_group_id.id
-            if (
-                hasattr(company, "general_aliquot_sale")
-                and company.general_aliquot_sale
-            ):
-                tax_config["general"] = company.general_aliquot_sale.tax_group_id.id
-            if hasattr(company, "extend_aliquot_sale") and company.extend_aliquot_sale:
-                tax_config["extend"] = company.extend_aliquot_sale.tax_group_id.id
+            tax_config = self.env["account.tax.group"]._l10n_ve_build_tax_config(
+                company
+            )
 
             subtotals = tax_totals.get("subtotals", [])
             for subtotal in subtotals:
@@ -1953,15 +1974,7 @@ Please create a credit note instead.
             return {"base": 0.0, "amount": 0.0}
 
         company = self.company_id
-        tax_config = {}
-        if hasattr(company, "exent_aliquot_sale") and company.exent_aliquot_sale:
-            tax_config["exempt"] = company.exent_aliquot_sale.tax_group_id.id
-        if hasattr(company, "reduced_aliquot_sale") and company.reduced_aliquot_sale:
-            tax_config["reduced"] = company.reduced_aliquot_sale.tax_group_id.id
-        if hasattr(company, "general_aliquot_sale") and company.general_aliquot_sale:
-            tax_config["general"] = company.general_aliquot_sale.tax_group_id.id
-        if hasattr(company, "extend_aliquot_sale") and company.extend_aliquot_sale:
-            tax_config["extend"] = company.extend_aliquot_sale.tax_group_id.id
+        tax_config = self.env["account.tax.group"]._l10n_ve_build_tax_config(company)
 
         tax_group_id = tax_config.get(tax_type)
         if not tax_group_id:
@@ -1995,27 +2008,9 @@ Please create a credit note instead.
             multiplier = -1 if move.move_type == "in_refund" else 1
 
             company = move.company_id
-            tax_config = {}
-            if (
-                hasattr(company, "exent_aliquot_purchase")
-                and company.exent_aliquot_purchase
-            ):
-                tax_config["exempt"] = company.exent_aliquot_purchase.tax_group_id.id
-            if (
-                hasattr(company, "reduced_aliquot_purchase")
-                and company.reduced_aliquot_purchase
-            ):
-                tax_config["reduced"] = company.reduced_aliquot_purchase.tax_group_id.id
-            if (
-                hasattr(company, "general_aliquot_purchase")
-                and company.general_aliquot_purchase
-            ):
-                tax_config["general"] = company.general_aliquot_purchase.tax_group_id.id
-            if (
-                hasattr(company, "extend_aliquot_purchase")
-                and company.extend_aliquot_purchase
-            ):
-                tax_config["extend"] = company.extend_aliquot_purchase.tax_group_id.id
+            tax_config = self.env["account.tax.group"]._l10n_ve_build_tax_config(
+                company
+            )
 
             subtotals = tax_totals.get("subtotals", [])
             for subtotal in subtotals:
@@ -2160,12 +2155,48 @@ Please create a credit note instead.
         "invoice_payment_term_id",
         "partner_id",
         "currency_id",
+        "l10n_ve_global_discount_ids",
+        "l10n_ve_global_discount_ids.amount",
+        "invoice_line_ids.product_id",
     )
     def _compute_tax_totals(self):
         res = super()._compute_tax_totals()
+        AccountTax = self.env["account.tax"]
         for move in self:
             if move.country_code != "VE" or not move.tax_totals:
                 continue
+            if move.is_invoice(include_receipts=True):
+                discount_totals = AccountTax._l10n_ve_get_global_discount_totals(
+                    move,
+                    move.tax_totals,
+                )
+                move.tax_totals["l10n_ve_show_global_discount"] = discount_totals[
+                    "show_global_discount"
+                ]
+                move.tax_totals["l10n_ve_subtotal_gross_currency"] = discount_totals[
+                    "subtotal_gross_currency"
+                ]
+                move.tax_totals["l10n_ve_subtotal_gross"] = discount_totals[
+                    "subtotal_gross"
+                ]
+                move.tax_totals["l10n_ve_global_discount_amount_currency"] = (
+                    discount_totals["global_discount_amount_currency"]
+                )
+                move.tax_totals["l10n_ve_global_discount_amount"] = discount_totals[
+                    "global_discount_amount"
+                ]
+                move.tax_totals["l10n_ve_global_discount_amount_foreign"] = (
+                    discount_totals["global_discount_amount_foreign"]
+                )
+                move.tax_totals["l10n_ve_subtotal_gross_foreign"] = discount_totals[
+                    "subtotal_gross_foreign"
+                ]
+                move.tax_totals["l10n_ve_global_discount_lines"] = discount_totals[
+                    "global_discount_lines"
+                ]
+                move.tax_totals["l10n_ve_global_discount_percentage"] = (
+                    discount_totals["global_discount_percentage"]
+                )
             move.tax_totals["same_tax_base"] = False
             for subtotal in move.tax_totals.get("subtotals", []):
                 for tax_group in subtotal.get("tax_groups", []):
@@ -2511,7 +2542,7 @@ Please create a credit note instead.
         for move in self:
             if move.company_id.account_fiscal_country_id.code != "VE":
                 continue
-            if move.move_type not in ("out_refund", "in_refund"):
+            if move.move_type != "out_refund":
                 continue
             if move.l10n_ve_debit_note_reversed_ids:
                 continue

@@ -171,7 +171,9 @@ class ProductTemplate(models.Model):
 
     @api.model
     def _l10n_ve_get_exent_sale_tax(self, company):
-        tax = company.exent_aliquot_sale
+        tax = self.env["account.tax.group"]._l10n_ve_get_exempt_tax(
+            company, "sale"
+        )
         if tax:
             return tax
         return self.env["account.tax"].search(
@@ -185,7 +187,9 @@ class ProductTemplate(models.Model):
 
     @api.model
     def _l10n_ve_get_exent_purchase_tax(self, company):
-        tax = company.exent_aliquot_purchase
+        tax = self.env["account.tax.group"]._l10n_ve_get_exempt_tax(
+            company, "purchase"
+        )
         if tax:
             return tax
         return self.env["account.tax"].search(
@@ -234,7 +238,7 @@ class ProductTemplate(models.Model):
         company = self._l10n_ve_vals_get_company(vals)
         if company.account_fiscal_country_id != ve:
             return
-        if not hasattr(company, "exent_aliquot_sale"):
+        if not self.env["account.tax.group"]._l10n_ve_get_report_tax_groups(company):
             return
         if not self._l10n_ve_m2m_commands_have_tax_ids("taxes_id", vals):
             sale_tax = self._l10n_ve_get_exent_sale_tax(company)

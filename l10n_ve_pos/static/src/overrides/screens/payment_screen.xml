@@ -2,21 +2,21 @@
 <templates id="template" xml:space="preserve">
     <t t-name="l10n_ve_pos.PaymentScreenButtons" t-inherit="point_of_sale.PaymentScreenButtons" t-inherit-mode="extension">
         <xpath expr="//button[hasclass('js_invoice')]" position="replace">
-            <button t-if="isVenezuelaPos"
-                class="button js_invoice btn btn-light btn-lg d-flex flex-column align-items-stretch text-start w-100 w-md-50 lh-lg pe-none"
-                t-att-class="{ 'highlight active': true }">
-                <div class="d-flex justify-content-between align-items-baseline">
-                    <span><i class="fa fa-file-text-o me-2" /><t t-esc="l10nVeInvoiceTitle"/></span>
-                    <i class="fa fa-check-square me-2 text-action" />
-                </div>
-                <small class="text-muted text-truncate ps-4" t-esc="l10nVeInvoiceJournalDisplayName"/>
-            </button>
-            <button t-else=""
+            <button t-if="!isVenezuelaPos"
                 class="button js_invoice btn btn-light btn-lg d-flex justify-content-between align-items-baseline w-100 w-md-50 lh-lg"
                 t-att-class="{ 'highlight active': currentOrder.is_to_invoice() }"
                 t-on-click="toggleIsToInvoice">
                 <span><i class="fa fa-file-text-o me-2" />Invoice</span>
                 <i class="fa me-2" t-attf-class="{{ currentOrder.is_to_invoice() ? 'fa-check-square text-action' : 'fa-square-o' }}" />
+            </button>
+            <button t-if="isVenezuelaPos"
+                class="button js_invoice_journal btn btn-light btn-lg d-flex align-items-center text-start w-100 w-md-50 lh-lg"
+                t-att-class="{ 'highlight active': true }"
+                t-on-click="clickInvoiceJournal">
+                <i class="fa fa-book me-2" />
+                <span class="text-truncate">
+                    <t t-esc="l10nVeInvoiceJournalDisplayName"/>
+                </span>
             </button>
         </xpath>
     </t>

@@ -17,6 +17,38 @@ class SaleOrderLine(models.Model):
             res["price_unit"] = -alloc[self.id]
         return res
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        lines._l10n_ve_refresh_order_global_discounts()
+        return lines
+
+    def write(self, vals):
+        res = super().write(vals)
+        if set(vals) & {
+            "product_uom_qty",
+            "price_unit",
+            "discount",
+            "tax_id",
+            "product_id",
+            "display_type",
+        }:
+            self._l10n_ve_refresh_order_global_discounts()
+        return res
+
+    def unlink(self):
+        orders = self.order_id
+        res = super().unlink()
+        orders._l10n_ve_refresh_global_discounts_from_lines()
+        return res
+
+    def _l10n_ve_refresh_order_global_discounts(self):
+        orders = self.mapped("order_id").filtered(
+            lambda order: order.country_code == "VE" and order.l10n_ve_global_discount_ids
+        )
+        if orders:
+            orders._l10n_ve_refresh_global_discounts_from_lines()
+
     def _l10n_ve_is_split_discount_line(self):
         self.ensure_one()
         disc = self.company_id.sale_discount_product_id
@@ -27,10 +59,55 @@ class SaleOrderLine(models.Model):
             and not self.display_type
         )
 
+    def _l10n_ve_get_discount_invoiced_subtotal(self):
+        self.ensure_one()
+        total = 0.0
+        for invoice_line in self._get_invoice_lines():
+            move = invoice_line.move_id
+            if move.state == "cancel" and move.payment_state != "invoicing_legacy":
+                continue
+            amount = abs(invoice_line.price_subtotal)
+            if move.move_type == "out_invoice":
+                total += amount
+            elif move.move_type == "out_refund":
+                total -= amount
+        return total
+
+    def _l10n_ve_fix_discount_invoicing_rounding(self):
+        fixed = self.env["sale.order.line"]
+        for line in self:
+            if not line._l10n_ve_is_split_discount_line():
+                continue
+            rounding = line.product_uom.rounding
+            if float_is_zero(line.qty_to_invoice, precision_rounding=rounding):
+                continue
+            if float_is_zero(line.product_uom_qty, precision_rounding=rounding):
+                continue
+            expected_subtotal = abs(line.price_subtotal)
+            if float_is_zero(expected_subtotal, precision_rounding=line.currency_id.rounding):
+                continue
+            invoiced_subtotal = line._l10n_ve_get_discount_invoiced_subtotal()
+            if float_compare(
+                invoiced_subtotal,
+                expected_subtotal,
+                precision_rounding=line.currency_id.rounding,
+            ) < 0:
+                continue
+            aligned_price = line.price_subtotal / line.product_uom_qty
+            line.write({"price_unit": aligned_price})
+            fixed |= line
+        if fixed:
+            fixed._compute_qty_invoiced()
+            fixed._compute_qty_to_invoice()
+            fixed.mapped("order_id")._compute_invoice_status()
+        return fixed
+
     @api.depends(
         "invoice_lines.move_id.state",
         "invoice_lines.quantity",
         "invoice_lines.price_subtotal",
+        "price_unit",
+        "product_uom_qty",
     )
     def _compute_qty_invoiced(self):
         super()._compute_qty_invoiced()
@@ -95,10 +172,23 @@ class SaleOrderLine(models.Model):
                     if extra:
                         text = f"{text}\n{extra}" if text else extra
                 else:
-                    text = f"{text}\n{raw_stripped}" if text else raw_stripped
+                    cleaned_raw = line._l10n_ve_strip_default_code_prefix(raw_stripped)
+                    text = f"{text}\n{cleaned_raw}" if text else cleaned_raw
         if not (text or "").strip():
-            text = (line.name or "").strip()
+            text = (product.display_name or "").strip()
         return plaintext2html(text, with_paragraph=False)
+
+    def _l10n_ve_strip_default_code_prefix(self, text):
+        self.ensure_one()
+        if not text:
+            return text
+        lines = text.splitlines()
+        first_line = lines[0].strip()
+        if first_line.startswith("[") and "]" in first_line:
+            first_line = first_line.split("]", 1)[1].strip()
+            lines[0] = first_line
+            return "\n".join(line for line in lines if line.strip()).strip()
+        return text
 
     @api.constrains("discount", "order_id")
     def _l10n_ve_check_line_discount(self):

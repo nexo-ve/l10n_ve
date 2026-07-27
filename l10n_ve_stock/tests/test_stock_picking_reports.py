@@ -309,3 +309,96 @@ class TestL10nVeStockPickingReports(TestL10nVeStockDispatchGuide):
             paperformat,
             self.env.ref("l10n_ve_stock.paperformat_l10n_ve_dispatch_guide_letter"),
         )
+
+    def _ensure_product_stock(self, product, qty=10.0):
+        warehouse = self.env["stock.warehouse"].search(
+            [("company_id", "=", self.env.company.id)], limit=1
+        )
+        self.env["stock.quant"]._update_available_quantity(
+            product, warehouse.lot_stock_id, qty
+        )
+
+    def test_dispatch_guide_shows_sale_global_discount(self):
+        journal = self.company_data["default_journal_sale"]
+        if "l10n_ve_emission_medium" in journal._fields:
+            journal.l10n_ve_emission_medium = "digital"
+        product = self.company_data["product_order_no"]
+        product.is_storable = True
+        self._ensure_product_stock(product)
+        picking = self._prepare_outgoing_sale_picking(product, 1)
+        order = picking.sale_id
+        reason = self.env["l10n.ve.discount.reason"]._l10n_ve_get_default()
+        if not reason:
+            reason = self.env["l10n.ve.discount.reason"].create({"name": "Descuento"})
+        subtotal = sum(
+            line.price_subtotal
+            for line in order.order_line
+            if not line.display_type
+        )
+        self.env["l10n.ve.sale.order.discount"].create(
+            {
+                "sale_order_id": order.id,
+                "reason_id": reason.id,
+                "amount": subtotal * 0.1,
+                "discount_type": "percentage",
+                "discount_percentage": 0.1,
+            }
+        )
+        self.assertTrue(order.l10n_ve_global_discount_ids)
+        self.assertGreater(picking.l10n_ve_dispatch_display_discount, 0.0)
+        amount, currency, lines = picking._l10n_ve_dispatch_guide_discount_display()
+        self.assertAlmostEqual(amount, picking.l10n_ve_dispatch_display_discount)
+        self.assertEqual(currency, order.currency_id)
+        self.assertTrue(lines)
+        report_html = self.env["ir.actions.report"]._render_qweb_html(
+            "l10n_ve_stock.report_dispatch_guide", picking.ids
+        )[0]
+        html = report_html.decode() if isinstance(report_html, bytes) else report_html
+        self.assertIn("Subtotal:", html)
+        self.assertIn("Descuento", html)
+
+    def test_dispatch_guide_shows_product_line_discount(self):
+        if "sale_discount_product_id" not in self.env["res.company"]._fields:
+            self.skipTest("sale_discount_product_id requires sale module")
+        journal = self.company_data["default_journal_sale"]
+        if "l10n_ve_emission_medium" in journal._fields:
+            journal.l10n_ve_emission_medium = "digital"
+        product = self.company_data["product_order_no"]
+        product.is_storable = True
+        self._ensure_product_stock(product)
+        picking = self._prepare_outgoing_sale_picking(product, 1)
+        order = picking.sale_id
+        product_subtotal = sum(
+            line.price_subtotal
+            for line in order.order_line
+            if not line.display_type
+        )
+        discount_amount = product_subtotal * 0.1
+        discount_product = self.env["product.product"].create(
+            {
+                "name": "Descuento producto guía",
+                "type": "service",
+                "list_price": 1.0,
+                "company_id": self.env.company.id,
+            }
+        )
+        self.env.company.sale_discount_product_id = discount_product
+        self.env["sale.order.line"].create(
+            {
+                "order_id": order.id,
+                "product_id": discount_product.id,
+                "name": "Descuento promocional",
+                "product_uom_qty": 1.0,
+                "price_unit": -discount_amount,
+            }
+        )
+        self.assertFalse(order.l10n_ve_global_discount_ids)
+        self.assertTrue(order.tax_totals.get("l10n_ve_show_global_discount"))
+        self.assertGreater(picking.l10n_ve_dispatch_display_discount, 0.0)
+        self.assertGreater(picking.l10n_ve_dispatch_display_subtotal, 0.0)
+        report_html = self.env["ir.actions.report"]._render_qweb_html(
+            "l10n_ve_stock.report_dispatch_guide", picking.ids
+        )[0]
+        html = report_html.decode() if isinstance(report_html, bytes) else report_html
+        self.assertIn("Subtotal:", html)
+        self.assertIn("Descuento", html)

@@ -72,6 +72,13 @@
                 t-set="subtotal_cur"
                 t-value="o.l10n_ve_dispatch_display_currency_id"
             />
+            <t
+                t-set="discount_display"
+                t-value="o._l10n_ve_dispatch_guide_discount_display()"
+            />
+            <t t-set="discount_amt" t-value="discount_display[0]" />
+            <t t-set="discount_cur" t-value="discount_display[1]" />
+            <t t-set="discount_lines" t-value="discount_display[2]" />
             <style>
             .l10n_ve_dispatch_main_title {
                 font-size: 16pt !important;
@@ -334,6 +341,27 @@
                         <span t-out="subtotal_cur.symbol or ''" />
                         <span t-out="'%.2f' % subtotal_amt" />
                     </div>
+                    <t t-if="discount_amt">
+                        <div class="mb-1" t-foreach="discount_lines" t-as="dline">
+                            <strong>
+                                <t t-out="dline.get('name') or 'Descuento'" />:
+                            </strong>
+                            <span t-out="discount_cur.symbol or ''" />
+                            <span t-out="'%.2f' % (-dline.get('amount', 0.0))" />
+                            <t
+                                t-if="dline.get('discount_type') == 'percentage' and dline.get('discount_percentage')"
+                            >
+                                <span
+                                    t-out="' (' + ('%.2f' % (dline.get('discount_percentage') * 100.0)) + '%)'"
+                                />
+                            </t>
+                        </div>
+                        <div class="mb-1" t-if="len(discount_lines) > 1">
+                            <strong>Descuento total:</strong>
+                            <span t-out="discount_cur.symbol or ''" />
+                            <span t-out="'%.2f' % (-discount_amt)" />
+                        </div>
+                    </t>
                     <div>
                         <strong>Total (con impuestos, documento):</strong>
                         <span t-out="total_cur.symbol or ''" />

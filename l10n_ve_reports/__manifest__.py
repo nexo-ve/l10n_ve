@@ -22,6 +22,8 @@ Accounting Reports
         "data/aged_partner_balance.xml",
         "data/general_ledger.xml",
         "data/diary_book_report.xml",
+        "data/bank_book_report.xml",
+        "data/cash_book_report.xml",
         "data/daily_payments_report.xml",
         "data/report_x.xml",
         "data/sales_book_report.xml",

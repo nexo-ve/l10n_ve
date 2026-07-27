@@ -4,6 +4,13 @@ from odoo import fields, models
 class PosOrder(models.Model):
     _inherit = "pos.order"
 
+    invoice_journal_id = fields.Many2one(
+        comodel_name="account.journal",
+        string="Diario de facturación",
+        domain="[('type', '=', 'sale')]",
+        check_company=True,
+        help="Diario usado al facturar este pedido POS.",
+    )
     l10n_ve_pos_invoice_name = fields.Char(
         related="account_move.name",
         string="Número de factura",
@@ -29,6 +36,12 @@ class PosOrder(models.Model):
         string="N° reporte Z",
         readonly=True,
     )
+
+    def _prepare_invoice_vals(self):
+        vals = super()._prepare_invoice_vals()
+        if self.invoice_journal_id:
+            vals["journal_id"] = self.invoice_journal_id.id
+        return vals
 
     def _generate_pos_order_invoice(self):
         ve_orders = self.filtered(

@@ -32,6 +32,10 @@ from . import account_followup_report
 from . import account_daily_payments_report
 from . import account_report_x
 from . import account_diary_book_report
+from . import l10n_ve_book_report_mixin
 from . import account_sales_book_report
 from . import account_sales_book_fiscal_machine_report
 from . import account_purchase_book_report
+from . import l10n_ve_liquidity_book_report_mixin
+from . import account_bank_book_report
+from . import account_cash_book_report
