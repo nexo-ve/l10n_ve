@@ -701,23 +701,29 @@ class AccountMove(models.Model):
     def _l10n_ve_to_company_abs_amount(self):
         self.ensure_one()
         company_cur = self.company_currency_id
-        amount = abs(self.amount_total)
         if self.currency_id == company_cur:
-            return company_cur.round(amount)
+            return company_cur.round(abs(self.amount_total))
+        if not company_cur.is_zero(self.amount_total_signed):
+            return company_cur.round(abs(self.amount_total_signed))
         date = self.invoice_date or self.date or fields.Date.context_today(self)
         return company_cur.round(
-            self.currency_id._convert(amount, company_cur, self.company_id, date)
+            self.currency_id._convert(
+                abs(self.amount_total), company_cur, self.company_id, date
+            )
         )
 
     def _l10n_ve_to_company_abs_untaxed_amount(self):
         self.ensure_one()
         company_cur = self.company_currency_id
-        amount = abs(self.amount_untaxed)
         if self.currency_id == company_cur:
-            return company_cur.round(amount)
+            return company_cur.round(abs(self.amount_untaxed))
+        if not company_cur.is_zero(self.amount_untaxed_signed):
+            return company_cur.round(abs(self.amount_untaxed_signed))
         date = self.invoice_date or self.date or fields.Date.context_today(self)
         return company_cur.round(
-            self.currency_id._convert(amount, company_cur, self.company_id, date)
+            self.currency_id._convert(
+                abs(self.amount_untaxed), company_cur, self.company_id, date
+            )
         )
 
     def _l10n_ve_posted_credit_on_invoice_company_amount(self):

@@ -179,11 +179,13 @@ class AccountMoveRetention(models.Model):
         }
 
     def action_post(self):
-        """
-        Override the action_post method to create the retentions payment.
-        """
+        """Create supplier retentions only after the move is actually posted."""
         res = super().action_post()
-        for move in self:
+        self._l10n_ve_create_post_retentions()
+        return res
+
+    def _l10n_ve_create_post_retentions(self):
+        for move in self.filtered(lambda m: m.state == "posted"):
             if move.move_type not in ("in_invoice", "in_refund"):
                 continue
 
@@ -198,8 +200,6 @@ class AccountMoveRetention(models.Model):
                 retention = move._create_supplier_retention("municipal")
                 retention.with_context(skip_is_manually_modified=True).action_post()
 
-            # The IVA retention will not be generated if the invoice already has
-            # a retention that is not cancelled
             if move.generate_iva_retention and not move.retention_iva_line_ids.filtered(
                 lambda line: line.state != "cancel"
             ):
@@ -208,10 +208,12 @@ class AccountMoveRetention(models.Model):
                 retention.with_context(skip_is_manually_modified=True).action_post()
                 move.iva_voucher_number = retention.number
 
-        move_retention = self.filtered(lambda move: move.origin_payment_id.is_retention)
+        move_retention = self.filtered(
+            lambda move: move.state == "posted" and move.origin_payment_id.is_retention
+        )
         for move in move_retention:
             move._set_retention_name()
-        return res
+
 
     def _set_retention_name(self):
         self.ensure_one()
