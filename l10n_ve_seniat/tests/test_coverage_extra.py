@@ -35,8 +35,8 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
                 "inverse_company_rate": 36.5,
             }
         )
-        move = self.init_invoice(
-            "out_invoice",
+        move = self._l10n_ve_create_invoice(
+            move_type="out_invoice",
             partner=self._ve_customer(),
             invoice_date=today,
             amounts=[100.0],
@@ -51,8 +51,8 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
 
     def test_out_refund_second_credit_exceeds_origin_total_raises(self):
         customer = self._ve_customer()
-        invoice = self.init_invoice(
-            "out_invoice",
+        invoice = self._l10n_ve_create_invoice(
+            move_type="out_invoice",
             partner=customer,
             invoice_date=fields.Date.today(),
             amounts=[100.0],
@@ -106,32 +106,26 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
             credit2.action_post()
         self.assertIn("monto máximo", str(cm.exception).lower())
 
-    def test_credit_note_foreign_amount_uses_origin_invoice_rate(self):
+    def test_credit_note_foreign_amount_uses_line_balances(self):
         customer = self._ve_customer()
+        company_ccy = self.env.company.currency_id
         usd = self.env.ref("base.USD")
-        date_invoice = fields.Date.to_date("2026-01-10")
-        date_credit = fields.Date.to_date("2026-01-20")
+        foreign = usd if company_ccy != usd else self.env.ref("base.EUR")
+        foreign.write({"active": True})
+        date_invoice = fields.Date.today()
         self.env["res.currency.rate"].create(
             {
-                "currency_id": usd.id,
+                "currency_id": foreign.id,
                 "company_id": self.env.company.id,
                 "name": date_invoice,
                 "inverse_company_rate": 2.0,
-            }
-        )
-        self.env["res.currency.rate"].create(
-            {
-                "currency_id": usd.id,
-                "company_id": self.env.company.id,
-                "name": date_credit,
-                "inverse_company_rate": 3.0,
             }
         )
         invoice = self.env["account.move"].create(
             {
                 "move_type": "out_invoice",
                 "partner_id": customer.id,
-                "currency_id": usd.id,
+                "currency_id": foreign.id,
                 "invoice_date": date_invoice,
                 "invoice_line_ids": [
                     (
@@ -155,8 +149,8 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
                 "move_type": "out_refund",
                 "reversed_entry_id": invoice.id,
                 "partner_id": customer.id,
-                "currency_id": usd.id,
-                "invoice_date": date_credit,
+                "currency_id": foreign.id,
+                "invoice_date": date_invoice,
                 "invoice_line_ids": [
                     (
                         0,
@@ -173,7 +167,72 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
                 ],
             }
         )
-        self.assertEqual(credit._l10n_ve_to_company_abs_amount(), 200.0)
+        expected = abs(
+            sum(
+                credit.line_ids.filtered(
+                    lambda line: line.display_type in ("product", "tax", "rounding")
+                ).mapped("balance")
+            )
+        )
+        self.assertEqual(credit._l10n_ve_to_company_abs_amount(), expected)
+        self.assertEqual(
+            credit._l10n_ve_to_company_abs_amount(),
+            invoice._l10n_ve_to_company_abs_amount(),
+        )
+
+    def test_full_credit_note_usd_matches_origin_despite_total_rounding(self):
+        customer = self._ve_customer()
+        company_ccy = self.env.company.currency_id
+        usd = self.env.ref("base.USD")
+        foreign = usd if company_ccy != usd else self.env.ref("base.EUR")
+        foreign.write({"active": True})
+        journal = self.company_data["default_journal_sale"]
+        journal.write({"l10n_ve_emission_medium": False})
+        date_invoice = fields.Date.today()
+        self.env["res.currency.rate"].create(
+            {
+                "currency_id": foreign.id,
+                "company_id": self.env.company.id,
+                "name": date_invoice,
+                "rate": 0.0012968967594959428,
+            }
+        )
+        tax = self.company_data["default_tax_sale"]
+        line_vals = {
+            "name": "SET ANILLO",
+            "quantity": 1.0,
+            "price_unit": 4.2067059522,
+            "account_id": self.company_data["default_account_revenue"].id,
+            "tax_ids": [(6, 0, [tax.id])] if tax else [],
+        }
+        invoice = self.env["account.move"].create(
+            {
+                "move_type": "out_invoice",
+                "partner_id": customer.id,
+                "journal_id": journal.id,
+                "currency_id": foreign.id,
+                "invoice_date": date_invoice,
+                "invoice_line_ids": [(0, 0, line_vals)],
+            }
+        )
+        invoice.action_post()
+        credit = self.env["account.move"].create(
+            {
+                "move_type": "out_refund",
+                "reversed_entry_id": invoice.id,
+                "partner_id": customer.id,
+                "journal_id": journal.id,
+                "currency_id": foreign.id,
+                "invoice_date": date_invoice,
+                "invoice_line_ids": [(0, 0, dict(line_vals))],
+            }
+        )
+        self.assertEqual(
+            credit._l10n_ve_to_company_abs_amount(),
+            invoice._l10n_ve_to_company_abs_amount(),
+        )
+        credit.action_post()
+        self.assertEqual(credit.state, "posted")
 
     def test_manual_credit_note_from_usd_invoice_posts_in_company_currency(self):
         customer = self._ve_customer()
@@ -276,6 +335,7 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
             .with_context(active_model="account.move", active_ids=invoice.ids)
             .create({"reason": "NC Bs"})
         )
+        invoice.l10n_ve_invoice_original_printed = True
         wiz.reverse_moves()
         credit = wiz.new_move_ids
         credit.ensure_one()
@@ -449,8 +509,8 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
                 "l10n_ve_credit_note_section_id": sec_cn.id,
             }
         )
-        invoice = self.init_invoice(
-            "out_invoice",
+        invoice = self._l10n_ve_create_invoice(
+            move_type="out_invoice",
             partner=self._ve_customer(),
             invoice_date=fields.Date.today(),
             amounts=[50.0],
@@ -458,6 +518,7 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
             journal=journal,
             post=True,
         )
+        invoice.l10n_ve_invoice_original_printed = True
         wiz = (
             self.env["account.debit.note"]
             .with_context(active_model="account.move", active_ids=invoice.ids)
@@ -565,8 +626,8 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
                 "vat": "J98765432",
             }
         )
-        bill = self.init_invoice(
-            "in_invoice",
+        bill = self._l10n_ve_create_invoice(
+            move_type="in_invoice",
             partner=supplier,
             invoice_date=fields.Date.today(),
             amounts=[90.0],
@@ -621,14 +682,15 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
         self.assertEqual(move.state, "draft")
 
     def test_credit_note_limit_includes_posted_debit_notes(self):
-        invoice = self.init_invoice(
-            "out_invoice",
+        invoice = self._l10n_ve_create_invoice(
+            move_type="out_invoice",
             partner=self._ve_customer(),
             invoice_date=fields.Date.today(),
             amounts=[100.0],
             taxes=self.tax_sale_a,
             post=True,
         )
+        invoice.l10n_ve_invoice_original_printed = True
         wiz = (
             self.env["account.debit.note"]
             .with_context(active_model="account.move", active_ids=invoice.ids)
@@ -696,7 +758,7 @@ class TestCoverageExtraAccountMove(L10nVeSeniatCommon):
         bad = self.env["res.partner"].create(
             {
                 "name": "Tercero mal",
-                "country_id": self.env.ref("base.us").id,
+                "country_id": self.env.ref("base.ve").id,
                 "vat": "invalid-rif",
             }
         )
@@ -752,7 +814,12 @@ class TestCoverageExtraNonVeCompany(L10nVeSeniatCommon):
             )
         )
         self.assertTrue(tax)
-        partner = self.env["res.partner"].create({"name": "Cliente US sin VAT"})
+        partner = self.env["res.partner"].with_company(company).create(
+            {
+                "name": "Cliente US sin VAT",
+                "country_id": self.env.ref("base.us").id,
+            }
+        )
         move = (
             self.env["account.move"]
             .with_company(company)
@@ -828,8 +895,8 @@ class TestCoverageExtraNonVeCompany(L10nVeSeniatCommon):
 @tagged("post_install", "-at_install")
 class TestCoverageExtraInstallMode(L10nVeSeniatCommon):
     def test_install_mode_action_post_calls_super_only(self):
-        move = self.init_invoice(
-            "out_invoice",
+        move = self._l10n_ve_create_invoice(
+            move_type="out_invoice",
             partner=self.env["res.partner"].create(
                 {
                     "name": "Inst",

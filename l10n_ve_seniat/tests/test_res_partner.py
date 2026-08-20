@@ -15,6 +15,7 @@ class TestResPartner(L10nVeSeniatCommon):
         )
         valid_vats = [
             "V12345678",
+            "V7440703",
             "E12345678",
             "J12345678",
             "G12345678",
@@ -87,13 +88,25 @@ class TestResPartner(L10nVeSeniatCommon):
         )
         self.assertEqual(partner.prefix_vat, "J")
 
-    def test_compute_taxpayer_type_ve(self):
+    def test_taxpayer_type_ve_not_auto_set(self):
         partner = self.env["res.partner"].create(
             {"name": "Test Partner", "country_id": self.env.ref("base.ve").id}
         )
-        self.assertEqual(partner.taxpayer_type, "ordinary")
+        self.assertFalse(partner.taxpayer_type)
 
-    def test_compute_taxpayer_type_non_ve(self):
+    def test_taxpayer_type_ve_can_be_set_and_cleared(self):
+        partner = self.env["res.partner"].create(
+            {
+                "name": "Test Partner",
+                "country_id": self.env.ref("base.ve").id,
+                "taxpayer_type": "formal",
+            }
+        )
+        self.assertEqual(partner.taxpayer_type, "formal")
+        partner.write({"taxpayer_type": False})
+        self.assertFalse(partner.taxpayer_type)
+
+    def test_taxpayer_type_non_ve(self):
         partner = self.env["res.partner"].create(
             {"name": "Test Partner", "country_id": self.env.ref("base.us").id}
         )
@@ -167,6 +180,15 @@ class TestResPartner(L10nVeSeniatCommon):
             partner.taxpayer_type = "ordinary"
         self.assertIn("Venezuelan", str(cm.exception))
 
+    def test_taxpayer_type_company_fiscal_ve_without_partner_country(self):
+        ve = self.env.ref("base.ve")
+        company = self.env["res.company"].create({"name": "Empresa VE nueva"})
+        company.account_fiscal_country_id = ve
+        partner = company.partner_id
+        self.assertFalse(partner.country_id)
+        partner.write({"taxpayer_type": "ordinary"})
+        self.assertEqual(partner.taxpayer_type, "ordinary")
+
     def test_partner_name_vat_locked_after_posted_move(self):
         partner = self.env["res.partner"].create(
             {
@@ -175,8 +197,8 @@ class TestResPartner(L10nVeSeniatCommon):
                 "vat": "V12345678",
             }
         )
-        invoice = self.init_invoice(
-            "out_invoice",
+        invoice = self._l10n_ve_create_invoice(
+            move_type="out_invoice",
             partner=partner,
             amounts=[1000.0],
             taxes=self.tax_sale_a,
@@ -186,7 +208,7 @@ class TestResPartner(L10nVeSeniatCommon):
         user = new_test_user(
             self.env,
             login="l10n_ve_partner_lock_user",
-            groups="account.group_account_invoice",
+            groups="account.group_account_invoice,base.group_partner_manager",
         )
         self.assertFalse(
             user.has_group("l10n_ve_seniat.group_l10n_ve_override_locked_master_data")
@@ -209,8 +231,8 @@ class TestResPartner(L10nVeSeniatCommon):
                 "vat": "V12345678",
             }
         )
-        invoice = self.init_invoice(
-            "out_invoice",
+        invoice = self._l10n_ve_create_invoice(
+            move_type="out_invoice",
             partner=partner,
             amounts=[1000.0],
             taxes=self.tax_sale_a,
@@ -220,7 +242,7 @@ class TestResPartner(L10nVeSeniatCommon):
         user = new_test_user(
             self.env,
             login="l10n_ve_partner_lock_disabled_user",
-            groups="account.group_account_invoice",
+            groups="account.group_account_invoice,base.group_partner_manager",
         )
         partner.with_user(user).write({"name": "Otro nombre", "vat": "V87654321"})
         self.assertEqual(partner.name, "Otro nombre")

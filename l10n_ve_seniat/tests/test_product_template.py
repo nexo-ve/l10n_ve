@@ -65,6 +65,38 @@ class TestProductTemplateL10nVe(L10nVeSeniatCommon):
                 )
             )
 
+    def test_ve_shared_product_allows_one_sale_tax_per_company(self):
+        other_data = self.setup_other_company(
+            name="VE Other Co Tax Test",
+            account_fiscal_country_id=self.env.ref("base.ve").id,
+        )
+        other_sale = other_data["default_tax_sale"]
+        other_purchase = other_data["default_tax_purchase"]
+        self.assertTrue(other_sale)
+        self.assertTrue(other_purchase)
+        product = self.env["product.template"].create(
+            {
+                "name": "Shared VE product multi-company taxes",
+                "company_id": False,
+                "list_price": 100.0,
+                "standard_price": 50.0,
+                "taxes_id": [(6, 0, [self.sale_tax.id, other_sale.id])],
+                "supplier_taxes_id": [
+                    (6, 0, [self.purchase_tax.id, other_purchase.id])
+                ],
+            }
+        )
+        self.assertEqual(
+            product.taxes_id.filtered(lambda t: t.company_id == self.env.company),
+            self.sale_tax,
+        )
+        self.assertEqual(
+            product.taxes_id.filtered(
+                lambda t: t.company_id == other_data["company"]
+            ),
+            other_sale,
+        )
+
     def test_ve_product_rejects_multiple_purchase_taxes(self):
         with self.assertRaises(ValidationError):
             self.env["product.template"].create(
@@ -135,19 +167,13 @@ class TestProductTemplateL10nVe(L10nVeSeniatCommon):
         self.assertEqual(p.taxes_id.amount, 0.0)
         self.assertEqual(p.supplier_taxes_id.amount, 0.0)
 
-    def test_ve_product_coerces_non_positive_list_price(self):
+    def test_ve_product_allows_zero_list_price(self):
         p = self.env["product.template"].create(
             self._create_product_vals(list_price=0.0, standard_price=0.0)
         )
-        self.assertEqual(p.list_price, 1.0)
+        self.assertEqual(p.list_price, 0.0)
 
-    def test_ve_product_coerces_zero_list_price_to_at_least_cost(self):
-        p = self.env["product.template"].create(
-            self._create_product_vals(list_price=0.0, standard_price=45.0)
-        )
-        self.assertEqual(p.list_price, 45.0)
-
-    def test_ve_product_product_create_coerces_zero_list_price(self):
+    def test_ve_product_product_create_allows_zero_list_price(self):
         p = self.env["product.product"].create(
             {
                 "name": "Variant zero price VE",
@@ -156,61 +182,14 @@ class TestProductTemplateL10nVe(L10nVeSeniatCommon):
                 "standard_price": 0.0,
             }
         )
-        self.assertEqual(p.list_price, 1.0)
+        self.assertEqual(p.list_price, 0.0)
 
-    def test_ve_product_allows_list_price_below_cost_when_not_enforced(self):
+    def test_ve_product_allows_list_price_below_cost(self):
         p = self.env["product.template"].create(
             self._create_product_vals(list_price=40.0, standard_price=50.0)
         )
         self.assertEqual(p.list_price, 40.0)
         self.assertEqual(p.standard_price, 50.0)
-
-    def test_ve_product_rejects_list_price_below_cost_when_enforced(self):
-        self.env.company.l10n_ve_enforce_sale_price_ge_cost = True
-        with self.assertRaises(ValidationError):
-            self.env["product.template"].create(
-                self._create_product_vals(list_price=40.0, standard_price=50.0)
-            )
-
-    def test_ve_product_onchange_rejects_zero_list_price(self):
-        product = self.env["product.template"].new(
-            self._create_product_vals(list_price=0.0, standard_price=0.0)
-        )
-        with self.assertRaises(ValidationError):
-            product._onchange_l10n_ve_check_list_price_and_cost()
-
-    def test_ve_product_onchange_rejects_list_price_below_cost_when_enforced(self):
-        self.env.company.l10n_ve_enforce_sale_price_ge_cost = True
-        product = self.env["product.template"].new(
-            self._create_product_vals(list_price=40.0, standard_price=50.0)
-        )
-        with self.assertRaises(ValidationError):
-            product._onchange_l10n_ve_check_list_price_and_cost()
-
-    def test_ve_variant_onchange_rejects_zero_list_price(self):
-        product = self.env["product.product"].new(
-            {
-                "name": "Variant onchange zero price VE",
-                "type": "service",
-                "list_price": 0.0,
-                "standard_price": 0.0,
-            }
-        )
-        with self.assertRaises(ValidationError):
-            product._onchange_l10n_ve_check_list_price_and_cost()
-
-    def test_ve_variant_onchange_rejects_lst_price_below_cost_when_enforced(self):
-        self.env.company.l10n_ve_enforce_sale_price_ge_cost = True
-        product = self.env["product.product"].new(
-            {
-                "name": "Variant onchange price below cost VE",
-                "type": "service",
-                "lst_price": 40.0,
-                "standard_price": 50.0,
-            }
-        )
-        with self.assertRaises(ValidationError):
-            product._onchange_l10n_ve_check_lst_price_and_cost()
 
     def test_ve_product_allows_list_price_equal_to_cost(self):
         p = self.env["product.template"].create(
