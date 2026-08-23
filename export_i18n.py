@@ -272,7 +272,7 @@ def main():
     print(f"Idioma: {args.language}")
     print(f"Módulos en repositorio: {len(repo_modules)}")
     print(f"Módulos instalados: {len(installed)}")
-    print("")
+    print()
 
     exported = 0
     skipped = 0
@@ -319,10 +319,10 @@ def main():
             print(f"OK ({done}/{total} traducciones) -> {po_path.relative_to(REPO_ROOT)}")
             exported += 1
 
-    print("")
+    print()
     print(f"Completado: {exported} exportados, {skipped} omitidos, {len(failed)} fallidos.")
     if failed:
-        print("")
+        print()
         for module, error in failed:
             print(f"  - {module}: {error[:300]}")
         sys.exit(1)

@@ -1,4 +1,4 @@
-from odoo import fields, models, _
+from odoo import _, fields, models
 from odoo.tools import float_is_zero, float_round
 
 
@@ -138,8 +138,7 @@ class PosPayment(models.Model):
                 payment.igtf_amount or 0.0,
                 precision_rounding=order.currency_id.rounding,
             )
-            if amount_igtf > amounts["amount"]:
-                amount_igtf = amounts["amount"]
+            amount_igtf = min(amount_igtf, amounts["amount"])
             use_igtf_split = (
                 payment.include_igtf
                 and amount_igtf

@@ -3,6 +3,7 @@ import re
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
+from odoo.fields import Domain
 from odoo.osv import expression
 
 _logger = logging.getLogger(__name__)
@@ -216,15 +217,15 @@ class ResPartner(models.Model):
             return super()._compute_display_name()
         for partner in self:
             name = partner.with_context(lang=self.env.lang)._get_complete_name()
-            if partner._context.get("show_address"):
+            if partner.env.context.get("show_address"):
                 name = name + "\n" + partner._display_address(without_company=True)
             name = re.sub(r"\s+\n", "\n", name)
-            if partner._context.get("partner_show_db_id"):
+            if partner.env.context.get("partner_show_db_id"):
                 name = f"{name} ({partner.id})"
-            if partner._context.get("address_inline"):
+            if partner.env.context.get("address_inline"):
                 splitted_names = name.split("\n")
                 name = ", ".join([n for n in splitted_names if n.strip()])
-            if partner._context.get("show_email") and partner.email:
+            if partner.env.context.get("show_email") and partner.email:
                 name = f"{name} <{partner.email}>"
             vat = (partner.vat or "").strip()
             if vat and vat != "/":
@@ -317,13 +318,13 @@ class ResPartner(models.Model):
             return False
         if self.check_vat_ve(term):
             return True
-        if re.match(r"^[VEJPGCvecjpg]", term, re.I):
+        if re.match(r"^[VEJPGCvecjpg]", term, re.IGNORECASE):
             if len(term) > 1 and term[1].isalpha():
                 return False
             if re.search(r"\d", term):
                 return True
         if (
-            re.fullmatch(r"[\d.\-\sVEJPGCvecjpg]+", term, re.I)
+            re.fullmatch(r"[\d.\-\sVEJPGCvecjpg]+", term, re.IGNORECASE)
             and len(re.sub(r"\D", "", term)) >= 6
         ):
             return True
@@ -352,7 +353,7 @@ class ResPartner(models.Model):
             [("vat", "ilike", v)]
             for v in self._l10n_ve_vat_search_variants(str(value).strip())
         ]
-        return expression.OR([domain, *variant_domains])
+        return Domain.OR([domain, *variant_domains])
 
     def check_vat_ve(self, vat):
         """Valida formato de RIF/CI venezolano.
@@ -402,14 +403,14 @@ class ResPartner(models.Model):
 
     @api.model
     @api.readonly
-    def name_search(self, name="", args=None, operator="ilike", limit=100):
-        args = list(args or [])
+    def name_search(self, name="", domain=None, operator="ilike", limit=100):
+        domain = list(domain or [])
         search_mode = self.env.context.get("res_partner_search_mode")
         if not self._l10n_ve_fiscal_locks_apply():
             if search_mode == "customer":
-                args = [("customer_rank", ">=", 1)] + args
+                domain = [("customer_rank", ">=", 1)] + domain
             elif search_mode == "supplier":
-                args = [("supplier_rank", ">=", 1)] + args
+                domain = [("supplier_rank", ">=", 1)] + domain
 
         name_stripped = (name or "").strip()
         if not limit:
@@ -418,14 +419,14 @@ class ResPartner(models.Model):
         if not name_stripped or not self._l10n_ve_name_search_should_query_vat_first(
             name_stripped
         ):
-            return super().name_search(name, args=args, operator=operator, limit=limit)
+            return super().name_search(name, domain=domain, operator=operator, limit=limit)
 
         vat_terms = self._l10n_ve_vat_search_variants(name_stripped)
-        vat_domain = expression.OR([[("vat", "ilike", v)] for v in vat_terms])
-        domain = expression.AND([vat_domain, args]) if args else vat_domain
-        vat_ids = self.search(domain, limit=limit).ids
+        vat_domain = Domain.OR([[("vat", "ilike", v)] for v in vat_terms])
+        search_domain = Domain.AND([vat_domain, domain]) if domain else vat_domain
+        vat_ids = self.search(search_domain, limit=limit).ids
 
-        standard = super().name_search(name, args=args, operator=operator, limit=limit)
+        standard = super().name_search(name, domain=domain, operator=operator, limit=limit)
 
         if not vat_ids:
             return standard

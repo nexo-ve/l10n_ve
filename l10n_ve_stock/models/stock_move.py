@@ -51,10 +51,10 @@ class StockMove(models.Model):
             sol = self.sale_line_id
             price_unit = sol.price_unit * (1.0 - (sol.discount or 0.0) / 100.0)
             price_currency = sol.currency_id
-            taxes = sol.tax_id
+            taxes = sol.tax_ids
             move_qty_sol_uom = self.product_uom._compute_quantity(
                 qty,
-                sol.product_uom,
+                sol.product_uom_id,
                 rounding_method="HALF-UP",
             )
             if sol.product_uom_qty:
@@ -123,11 +123,11 @@ class StockMove(models.Model):
         "sale_line_id.price_unit",
         "sale_line_id.discount",
         "sale_line_id.currency_id",
-        "sale_line_id.tax_id",
+        "sale_line_id.tax_ids",
         "sale_line_id.price_subtotal",
         "sale_line_id.price_total",
         "sale_line_id.product_uom_qty",
-        "sale_line_id.product_uom",
+        "sale_line_id.product_uom_id",
         "picking_id",
         "picking_id.picking_type_id",
         "picking_id.partner_id",

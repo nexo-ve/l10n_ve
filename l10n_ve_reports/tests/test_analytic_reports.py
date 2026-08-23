@@ -10,7 +10,7 @@ class TestAnalyticReport(TestAccountReportsCommon):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.env.user.groups_id += cls.env.ref("analytic.group_analytic_accounting")
+        cls.env.user.group_ids += cls.env.ref("analytic.group_analytic_accounting")
         cls.report = cls.env.ref("account_reports.profit_and_loss")
         cls.report.write({"filter_analytic": True})
 

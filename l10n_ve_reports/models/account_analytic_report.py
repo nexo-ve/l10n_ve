@@ -286,7 +286,7 @@ class AccountReport(models.AbstractModel):
                 elif field.split(".")[0] not in AccountAnalyticLine._fields:
                     expression = [(f"move_line_id.{field}", operator, right_term)]
                     if options.get("include_analytic_without_aml"):
-                        expression = osv.expression.OR(
+                        expression = osv.Domain.OR(
                             [
                                 [("move_line_id", "=", False)],
                                 expression,
@@ -310,7 +310,7 @@ class AccountReport(models.AbstractModel):
         domain = super()._get_options_journals_domain(options)
         # Add False to the domain in order to select lines without journals for analytics columns.
         if options.get("include_analytic_without_aml"):
-            domain = osv.expression.OR(
+            domain = osv.Domain.OR(
                 [
                     domain,
                     [("journal_id", "=", False)],
@@ -324,7 +324,7 @@ class AccountReport(models.AbstractModel):
 
         # Get the analytic accounts that we need to filter on from the options and add a domain for them.
         if "analytic_accounts_list" in options:
-            domain = osv.expression.AND(
+            domain = osv.Domain.AND(
                 [
                     domain,
                     [

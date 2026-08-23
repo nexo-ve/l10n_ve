@@ -91,7 +91,7 @@
                 <filter string="Con error" name="failed" domain="[('success', '=', False)]"/>
                 <separator/>
                 <filter string="Hoy" name="today" domain="[('event_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00'))]"/>
-                <group expand="0" string="Agrupar por">
+                <group>
                     <filter string="Tipo de evento" name="group_event_type" context="{'group_by': 'event_type'}"/>
                     <filter string="Origen" name="group_source" context="{'group_by': 'source'}"/>
                     <filter string="Usuario" name="group_user" context="{'group_by': 'user_id'}"/>

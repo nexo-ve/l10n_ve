@@ -20,13 +20,10 @@ class AccountTaxGroup(models.Model):
         default=False,
     )
 
-    _sql_constraints = [
-        (
-            "l10n_ve_aliquot_type_company_uniq",
-            "unique(company_id, l10n_ve_aliquot_type)",
-            "No puede existir más de un grupo con el mismo tipo de alícuota.",
-        ),
-    ]
+    _l10n_ve_aliquot_type_company_uniq = models.Constraint(
+        'unique(company_id, l10n_ve_aliquot_type)',
+        "No puede existir más de un grupo con el mismo tipo de alícuota.",
+    )
 
     @api.constrains(
         "l10n_ve_aliquot_type",

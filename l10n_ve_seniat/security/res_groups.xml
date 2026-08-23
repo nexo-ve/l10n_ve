@@ -6,25 +6,40 @@
         <field name="sequence">16</field>
     </record>
 
+    <!-- Odoo 19: res.groups.category_id was removed; groups now reference a
+         res.groups.privilege, which in turn holds the ir.module.category. -->
+    <record id="privilege_l10n_ve_accounting" model="res.groups.privilege">
+        <field name="name">Venezuela (Accounting)</field>
+        <field name="category_id" ref="base.module_category_accounting_accounting" />
+    </record>
+    <record id="privilege_l10n_ve_hidden" model="res.groups.privilege">
+        <field name="name">Venezuela (Technical)</field>
+        <field name="category_id" ref="base.module_category_hidden" />
+    </record>
+    <record id="privilege_l10n_ve_seniat_access" model="res.groups.privilege">
+        <field name="name">Venezuela (SENIAT)</field>
+        <field name="category_id" ref="l10n_ve_seniat.module_category_l10n_ve_seniat_access" />
+    </record>
+
     <!-- <record id="create_out_refund" model="res.groups"> -->
     <!--     <field name="name">Create Out Refund Moves</field> -->
-    <!--     <field name="category_id" ref="base.module_category_hidden" /> -->
+    <!--     <field name="privilege_id" ref="l10n_ve_seniat.privilege_l10n_ve_hidden" /> -->
     <!-- </record> -->
 
     <record id="group_fiscal_config_user" model="res.groups">
         <field name="name">Configuraciones fiscales usuario</field>
-        <field name="category_id" ref="base.module_category_accounting_accounting" />
+        <field name="privilege_id" ref="l10n_ve_seniat.privilege_l10n_ve_accounting" />
         <field
-            name="users"
+            name="user_ids"
             eval="[(4, ref('base.user_root')),(4,ref('base.user_admin'))]"
         />
     </record>
     <record id="group_fiscal_config_support" model="res.groups">
         <field name="name">Configuraciones fiscales soporte</field>
-        <field name="category_id" ref="base.module_category_accounting_accounting" />
+        <field name="privilege_id" ref="l10n_ve_seniat.privilege_l10n_ve_accounting" />
         <field name="implied_ids" eval="[(4, ref('group_fiscal_config_user'))]" />
         <field
-            name="users"
+            name="user_ids"
             eval="[(4, ref('base.user_root')),(4,ref('base.user_admin'))]"
         />
     </record>
@@ -34,25 +49,25 @@
 
     <record id="group_seniat_readonly" model="res.groups">
         <field name="name">SENIAT - Lectura contable</field>
-        <field name="category_id" ref="base.module_category_accounting_accounting" />
+        <field name="privilege_id" ref="l10n_ve_seniat.privilege_l10n_ve_accounting" />
         <field name="implied_ids" eval="[(4, ref('account.group_account_readonly'))]" />
     </record>
 
     <record id="group_seniat" model="res.groups">
         <field name="name">SENIAT</field>
-        <field name="category_id" ref="base.module_category_accounting_accounting" />
+        <field name="privilege_id" ref="l10n_ve_seniat.privilege_l10n_ve_accounting" />
         <field name="comment">Acceso al menú principal SENIAT</field>
-        <field name="users" eval="[(4, ref('base.user_admin'))]" />
+        <field name="user_ids" eval="[(4, ref('base.user_admin'))]" />
     </record>
 
     <record id="group_l10n_ve_override_locked_master_data" model="res.groups">
         <field name="name">SENIAT: omitir bloqueo de datos maestros sensibles</field>
-        <field name="category_id" ref="base.module_category_hidden" />
+        <field name="privilege_id" ref="l10n_ve_seniat.privilege_l10n_ve_hidden" />
     </record>
 
     <record id="group_l10n_ve_invoice_void" model="res.groups">
         <field name="name">Anular Facturas</field>
-        <field name="category_id" ref="l10n_ve_seniat.module_category_l10n_ve_seniat_access" />
+        <field name="privilege_id" ref="l10n_ve_seniat.privilege_l10n_ve_seniat_access" />
     </record>
 
     <record id="account.group_account_manager" model="res.groups">

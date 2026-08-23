@@ -26,14 +26,14 @@
                     >Sin derecho a Crédito Fiscal</strong>
                 </div>
                 <div
-                    t-if="o.partner_id and (o.partner_id.phone or o.partner_id.mobile)"
+                    t-if="o.partner_id and o.partner_id.phone"
                     class="col col-3 mw-100 mb-2"
                     name="div_partner_phone"
                 >
                     <strong>Teléfono del contacto</strong>
                     <div class="m-0">
                         <span
-                            t-out="o.partner_id.phone or o.partner_id.mobile"
+                            t-out="o.partner_id.phone"
                         />
                     </div>
                 </div>

@@ -58,7 +58,7 @@
             <th name="th_line_number" class="text-end text-nowrap">#</th>
             <th name="th_default_code" class="text-start text-nowrap">CÓDIGO</th>
         </xpath>
-        <xpath expr="//td[@name='td_name']" position="before">
+        <xpath expr="//td[@name='td_product_name']" position="before">
             <t
                 t-set="l10n_ve_line_number"
                 t-value="l10n_ve_line_number + 1"
@@ -70,7 +70,7 @@
                 <span t-field="line.product_id.default_code" />
             </td>
         </xpath>
-        <xpath expr="//td[@name='td_name']/span[@t-field='line.name']" position="replace">
+        <xpath expr="//td[@name='td_product_name']/span[@t-field='line.name']" position="replace">
             <span t-if="line.product_id" t-field="line.product_id.name" />
             <span t-else="" t-field="line.name" />
         </xpath>

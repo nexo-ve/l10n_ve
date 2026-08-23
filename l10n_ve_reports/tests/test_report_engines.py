@@ -50,7 +50,7 @@ class TestReportEngines(TestAccountReportsCommon):
                 "name": "turlututu",
                 "account_id": self.garbage_account.id,
                 **kwargs,
-                "debit": balance if balance > 0.0 else 0.0,
+                "debit": max(0.0, balance),
                 "credit": -balance if balance < 0.0 else 0.0,
                 "tax_tag_ids": [Command.set(tags.ids)],
             },
@@ -123,7 +123,7 @@ class TestReportEngines(TestAccountReportsCommon):
                             "name": "open balance",
                             "account_id": self.garbage_account.id,
                             "debit": -open_balance if open_balance < 0.0 else 0.0,
-                            "credit": open_balance if open_balance > 0.0 else 0.0,
+                            "credit": max(0.0, open_balance),
                         }
                     )
                 )

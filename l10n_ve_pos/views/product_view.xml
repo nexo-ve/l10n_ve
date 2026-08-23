@@ -11,21 +11,11 @@
         </field>
     </record>
 
-    <record id="product_product_view_form_normalized_pos" model="ir.ui.view">
-        <field name="name">product.product.view.form.normalized.pos.l10n.ve</field>
-        <field name="model">product.product</field>
-        <field name="inherit_id" ref="point_of_sale.product_product_view_form_normalized_pos"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='list_price']" position="attributes">
-                <attribute name="readonly">context.get('l10n_ve_pos_lock_price') and not l10n_ve_pos_allow_price_change</attribute>
-            </xpath>
-            <xpath expr="//field[@name='list_price']" position="after">
-                <field name="l10n_ve_pos_allow_price_change"/>
-            </xpath>
-        </field>
-    </record>
-
-    <record id="point_of_sale.product_product_action_edit_pos" model="ir.actions.act_window">
-        <field name="context" eval="{'dialog_size': 'medium', 'l10n_ve_pos_lock_price': True}"/>
-    </record>
+    <!--
+        Odoo 19 removed both point_of_sale.product_product_view_form_normalized_pos
+        (the POS quick price-edit form) and point_of_sale.product_product_action_edit_pos.
+        The list_price readonly lock and the l10n_ve_pos_lock_price context that used
+        to be injected here need a new anchor in the 19.0 POS product edit flow.
+        Records removed so the module installs cleanly; see NEEDS-REVIEW notes.
+    -->
 </odoo>

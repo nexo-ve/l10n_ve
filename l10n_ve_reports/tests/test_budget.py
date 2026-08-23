@@ -627,7 +627,7 @@ class TestBudgetReport(TestAccountReportsCommon):
             date_to="2025-12-31",
         )
 
-        self.env.user.groups_id += self.env.ref("analytic.group_analytic_accounting")
+        self.env.user.group_ids += self.env.ref("analytic.group_analytic_accounting")
         self.report.write({"filter_analytic_groupby": True})
 
         analytic_plan_a = self.env["account.analytic.plan"].create(

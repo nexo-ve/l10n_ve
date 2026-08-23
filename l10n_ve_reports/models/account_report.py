@@ -5,15 +5,16 @@ import base64
 import datetime
 import io
 import json
+import logging
 import re
 from ast import literal_eval
 from collections import defaultdict
 from functools import cmp_to_key
 from itertools import groupby
-import logging
 
 _logger = logging.getLogger(__name__)
 import markupsafe
+import xlsxwriter
 from dateutil.relativedelta import relativedelta
 from PIL import ImageFont
 
@@ -30,7 +31,7 @@ from odoo.tools import (
     parse_version,
 )
 from odoo.tools.float_utils import float_compare, float_round
-from odoo.tools.misc import file_path, format_date, formatLang, xlsxwriter
+from odoo.tools.misc import file_path, format_date, formatLang
 from odoo.tools.safe_eval import expr_eval, safe_eval
 
 from odoo.addons.web.controllers.utils import clean_action
@@ -619,7 +620,7 @@ class AccountReport(models.Model):
             return []
 
         selected_ir_filters = self.env["ir.filters"].browse(selected_filters_ids)
-        return osv.expression.OR(
+        return osv.Domain.OR(
             [filter_record._get_eval_domain() for filter_record in selected_ir_filters]
         )
 
@@ -1043,7 +1044,7 @@ class AccountReport(models.Model):
             )
         elif options_filter in ("previous_period", "same_last_year"):
             previous_period = options["date"]
-            for dummy in range(0, number_period):
+            for dummy in range(number_period):
                 if options_filter == "previous_period":
                     period_vals = self._get_shifted_dates_period(
                         options, previous_period, -1
@@ -1324,7 +1325,7 @@ class AccountReport(models.Model):
             if opt["selected"]:
                 selected_domains.append(domain)
             all_domains.append(domain)
-        return osv.expression.OR(selected_domains or all_domains)
+        return osv.Domain.OR(selected_domains or all_domains)
 
     ####################################################
     # OPTIONS: order column
@@ -1717,7 +1718,7 @@ class AccountReport(models.Model):
                 ("move_id.fiscal_position_id.foreign_vat", "=", False),
             ]
             tax_tag_domain = get_foreign_vat_tax_tag_extra_domain()
-            return osv.expression.OR([domain, tax_tag_domain])
+            return osv.Domain.OR([domain, tax_tag_domain])
 
         if isinstance(fiscal_position_opt, int):
             # It's a fiscal position id
@@ -1726,7 +1727,7 @@ class AccountReport(models.Model):
                 fiscal_position_opt
             )
             tax_tag_domain = get_foreign_vat_tax_tag_extra_domain(fiscal_position)
-            return osv.expression.OR([domain, tax_tag_domain])
+            return osv.Domain.OR([domain, tax_tag_domain])
 
         # 'all', or option isn't specified
         return []
@@ -1883,8 +1884,7 @@ class AccountReport(models.Model):
                 ):
                     already_present_period["from"] = col_group_date_from
 
-                if already_present_period["to"] < col_group_date_to:
-                    already_present_period["to"] = col_group_date_to
+                already_present_period["to"] = max(already_present_period["to"], col_group_date_to)
             else:
                 periods[period_key] = {
                     "from": col_group_date_from,
@@ -2147,7 +2147,7 @@ class AccountReport(models.Model):
         if self.search_bar:
             options["search_bar"] = True
             if (
-                "default_filter_accounts" not in self._context
+                "default_filter_accounts" not in self.env.context
                 and "filter_search_bar" in previous_options
             ):
                 options["filter_search_bar"] = previous_options["filter_search_bar"]
@@ -2887,10 +2887,10 @@ class AccountReport(models.Model):
         return query
 
     def _create_report_budget_temp_table(self, options):
-        self._cr.execute(
+        self.env.cr.execute(
             "SELECT 1 FROM information_schema.tables WHERE table_name='account_report_budget_temp_aml'"
         )
-        if self._cr.fetchone():
+        if self.env.cr.fetchone():
             return
 
         stored_aml_fields, fields_to_insert = self.env[
@@ -2908,7 +2908,7 @@ class AccountReport(models.Model):
             }
         )
 
-        self._cr.execute(
+        self.env.cr.execute(
             SQL(
                 """
                 -- Create a temporary table, dropping not null constraints because we're not filling those columns
@@ -2960,7 +2960,7 @@ class AccountReport(models.Model):
                     ("internal_group", "in", ["income", "expense"]),
                 ]
             )
-            self._cr.execute(
+            self.env.cr.execute(
                 SQL(
                     """
                 -- Insert dynamic combinations of account_id and budget_id into the temporary table
@@ -3218,7 +3218,7 @@ class AccountReport(models.Model):
             ],  # view_id will be False in case the default view is needed
             "res_model": target_record._name,
             "res_id": target_record.id,
-            "context": self._context,
+            "context": self.env.context,
         }
 
         if view_id is not None:
@@ -3849,7 +3849,7 @@ class AccountReport(models.Model):
 
         # Check whether there are unposted entries for the selected period and partner or not (if the report allows it)
         if options.get("date") and options.get("all_entries") is not None:
-            domain = osv.expression.AND(
+            domain = osv.Domain.AND(
                 [
                     self.env["account.move"]._check_company_domain(report_company_ids),
                     [("state", "=", "draft")],
@@ -3857,10 +3857,10 @@ class AccountReport(models.Model):
                 ]
             )
             if options.get("partner_ids"):
-                domain = osv.expression.AND(
+                domain = osv.Domain.AND(
                     [
                         domain,
-                        osv.expression.OR(
+                        osv.Domain.OR(
                             [
                                 [("partner_id", "in", options["partner_ids"])],
                                 [("partner_shipping_id", "in", options["partner_ids"])],
@@ -3991,7 +3991,7 @@ class AccountReport(models.Model):
                 ._fields["engine"]
                 ._description_selection(self.env)
             )
-            expressions_detail = defaultdict(lambda: [])
+            expressions_detail = defaultdict(list)
             col_expression_to_figure_type = {
                 column.get("expression_label"): column.get("figure_type")
                 for column in options["columns"]
@@ -5275,7 +5275,7 @@ class AccountReport(models.Model):
             tail_query=tail_query,
         )
 
-        self._cr.execute(sql)
+        self.env.cr.execute(sql)
 
         rslt = {
             formula_expr: []
@@ -5283,7 +5283,7 @@ class AccountReport(models.Model):
             else {"result": 0, "has_sublines": False}
             for formula_expr in formulas_dict.items()
         }
-        for query_res in self._cr.dictfetchall():
+        for query_res in self.env.cr.dictfetchall():
             formula = query_res["formula"]
             rslt_dict = {
                 "result": query_res["balance"],
@@ -5409,8 +5409,8 @@ class AccountReport(models.Model):
 
             # Fetch the results.
             formula_rslt = []
-            self._cr.execute(query)
-            all_query_res = self._cr.dictfetchall()
+            self.env.cr.execute(query)
+            all_query_res = self.env.cr.dictfetchall()
 
             total_sum = 0
             for query_res in all_query_res:
@@ -5596,7 +5596,7 @@ class AccountReport(models.Model):
 
             if excluded_prefixes_domains:
                 account_domain.append("!")
-                account_domain += osv.expression.OR(excluded_prefixes_domains)
+                account_domain += osv.Domain.OR(excluded_prefixes_domains)
 
             prefix_query = self.env["account.account"]._where_calc(account_domain)
             all_prefixes_queries.append(
@@ -5682,13 +5682,13 @@ class AccountReport(models.Model):
             if not tail_query_additional_groupby_where_sql
             else SQL(),
         )
-        self._cr.execute(query)
+        self.env.cr.execute(query)
 
         # Parse result
         rslt = {}
 
         res_by_prefix_account_id = {}
-        for query_res in self._cr.dictfetchall():
+        for query_res in self.env.cr.dictfetchall():
             # Done this way so that we can run similar code for groupby and non-groupby
             grouping_key = query_res["grouping_key"] if current_groupby else None
             account_id = query_res["account_id"]
@@ -6410,7 +6410,7 @@ class AccountReport(models.Model):
                 date_scope, []
             )
             audit_or_domains.append(
-                osv.expression.AND(
+                osv.Domain.AND(
                     [
                         expression_domain,
                         groupby_domain,
@@ -6419,11 +6419,11 @@ class AccountReport(models.Model):
             )
 
         if audit_or_domains_per_date_scope:
-            domain = osv.expression.OR(
+            domain = osv.Domain.OR(
                 [
-                    osv.expression.AND(
+                    osv.Domain.AND(
                         [
-                            osv.expression.OR(audit_or_domains),
+                            osv.Domain.OR(audit_or_domains),
                             self._get_options_domain(column_group_options, date_scope),
                             groupby_domain,
                         ]
@@ -6433,7 +6433,7 @@ class AccountReport(models.Model):
             )
         else:
             # Happens when no expression was provided (empty recordset), or if none of the expressions had a standard engine
-            domain = osv.expression.AND(
+            domain = osv.Domain.AND(
                 [
                     self._get_options_domain(column_group_options, "strict_range"),
                     groupby_domain,
@@ -6442,7 +6442,7 @@ class AccountReport(models.Model):
 
         # Analytic Filter
         if column_group_options.get("analytic_accounts"):
-            domain = osv.expression.AND(
+            domain = osv.Domain.AND(
                 [
                     domain,
                     [
@@ -6527,7 +6527,7 @@ class AccountReport(models.Model):
 
                     account_codes_domains.append(account_codes_domain)
 
-            return osv.expression.OR(account_codes_domains)
+            return osv.Domain.OR(account_codes_domains)
 
         if expression_to_audit.engine == "tax_tags":
             tags = self.env["account.account.tag"]._get_tax_tags(
@@ -7242,7 +7242,7 @@ class AccountReport(models.Model):
                 ]
                 for period in options["comparison"]["periods"]
             ]
-            dates_domain = osv.expression.OR(
+            dates_domain = osv.Domain.OR(
                 [dates_domain, *unlinked_comparison_periods_domains_list]
             )
 
@@ -7255,7 +7255,7 @@ class AccountReport(models.Model):
             period_date_from = self._adjust_date_for_joined_comparison(
                 options, period_date_from
             )
-            dates_domain = osv.expression.AND(
+            dates_domain = osv.Domain.AND(
                 [
                     [("date", ">=", period_date_from)],
                     [("date", "<=", options["date"]["date_to"])],
@@ -7265,10 +7265,10 @@ class AccountReport(models.Model):
                 options, dates_domain
             )
 
-            domain = osv.expression.AND(
+            domain = osv.Domain.AND(
                 [
                     domain,
-                    osv.expression.OR(
+                    osv.Domain.OR(
                         [
                             [("date", "=", False)],
                             dates_domain,
@@ -7279,11 +7279,11 @@ class AccountReport(models.Model):
 
         fiscal_position_option = options.get("fiscal_position")
         if isinstance(fiscal_position_option, int):
-            domain = osv.expression.AND(
+            domain = osv.Domain.AND(
                 [domain, [("fiscal_position_id", "=", fiscal_position_option)]]
             )
         elif fiscal_position_option == "domestic":
-            domain = osv.expression.AND([domain, [("fiscal_position_id", "=", False)]])
+            domain = osv.Domain.AND([domain, [("fiscal_position_id", "=", False)]])
         return domain
 
     def get_annotations(self, options):
@@ -8096,7 +8096,7 @@ class AccountReport(models.Model):
             # Make sure -0.0 becomes 0.0
             value = abs(value)
 
-        if self._context.get("no_format"):
+        if self.env.context.get("no_format"):
             return value
 
         formatted_amount = formatLang(self.env, value, **formatLang_params)
@@ -8219,7 +8219,7 @@ class AccountReport(models.Model):
                         bodies,
                         footer=footer.decode(),
                         landscape=is_landscape
-                        or self._context.get("force_landscape_printing"),
+                        or self.env.context.get("force_landscape_printing"),
                         specific_paperformat_args={
                             "data-report-margin-top": 10,
                             "data-report-header-spacing": 10,
@@ -8425,7 +8425,7 @@ class AccountReport(models.Model):
         if value is None:
             value = ""
         else:
-            try:  # noqa: SIM105
+            try:
                 # This is needed, otherwise we could compute width on very long number such as 12.0999999998
                 # which wouldn't show well in the end result as the numbers are rounded.
                 value = float_repr(
@@ -8655,8 +8655,7 @@ class AccountReport(models.Model):
         )
 
         num_cols = len(options.get("columns", [])) + original_x_offset + 1
-        if num_cols < 10:
-            num_cols = 10
+        num_cols = max(num_cols, 10)
 
         if company.name:
             company_info = f"{company.name}"
@@ -8824,9 +8823,9 @@ class AccountReport(models.Model):
                 cell_format = get_format("default_indent", level)
 
             x_offset = original_x_offset + 1
-            if lines[y]["id"] in account_lines_split_names:
+            if line["id"] in account_lines_split_names:
                 # Write the Account Code and Name columns.
-                code, name = account_lines_split_names[lines[y]["id"]]
+                code, name = account_lines_split_names[line["id"]]
                 # Don't indent the account code and don't format is as a monetary value either.
                 write_cell(sheet, 0, y + y_offset, code, account_code_cell_format)
                 write_cell(sheet, 1, y + y_offset, name, cell_format)
@@ -9480,7 +9479,7 @@ class AccountReport(models.Model):
         )  # {duplicate_account_code: {line_with_that_code_multiple_times,}}
         common_account_domain = [
             *self.env["account.account"]._check_company_domain(self.env.company),
-            ("deprecated", "=", False),
+            ("active", "=", True),
         ]
 
         # tag_ids already linked to an account - avoid several search_count to know if the tag is used or not
@@ -10355,13 +10354,10 @@ class AccountReportHorizontalGroup(models.Model):
     )
     report_ids = fields.Many2many(string="Reports", comodel_name="account.report")
 
-    _sql_constraints = [
-        (
-            "name_uniq",
-            "unique (name)",
-            "A horizontal group with the same name already exists.",
-        ),
-    ]
+    _name_uniq = models.Constraint(
+        'unique (name)',
+        "A horizontal group with the same name already exists.",
+    )
 
     def _get_header_levels_data(self):
         return [
@@ -10458,7 +10454,7 @@ class AccountReportCustomHandler(models.AbstractModel):
         each line to unfold, leading to very inefficient computation. This function allows batching this computation,
         and returns a dictionary where all results are cached, for use in expansion functions.
         """
-        return None
+        return
 
     def _get_custom_display_config(self):
         """To be overridden in order to change the templates used by Javascript to render this report (keeping the same
@@ -10511,7 +10507,6 @@ class AccountReportCustomHandler(models.AbstractModel):
 
     def _enable_export_buttons_for_common_vat_groups_in_branches(self, options):
         """DEPRECATED: to be removed in master. Buttons are now set to 'branch_allowed' when needed in get_options()"""
-        pass
 
 
 class AccountReportFileDownloadException(Exception):

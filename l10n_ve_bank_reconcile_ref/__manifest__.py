@@ -4,7 +4,7 @@
 {
     "name": "Venezuela Bank Reconcile by Reference",
     "summary": "Auto-match bank statements by payment/invoice reference suffixes",
-    "version": "18.0.1.0.0",
+    "version": "19.0.1.0.0",
     "category": "Accounting",
     "website": "https://github.com/OCA/l10n-venezuela",
     "author": "andyengit, Odoo Community Association (OCA)",

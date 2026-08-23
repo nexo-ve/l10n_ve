@@ -1302,7 +1302,7 @@ class AccountMove(models.Model):
         country = partner.country_id or partner.commercial_partner_id.country_id
         return bool(country and country.code == "VE")
 
-    def action_post(self):  # noqa: C901
+    def action_post(self):
         """Valida RIF, totales, origen de NC/ND y un impuesto por línea antes de confirmar.
 
         Notes
@@ -1961,7 +1961,7 @@ Please create a credit note instead.
     )
 
     @api.depends("tax_totals", "move_type", "state", "company_id")
-    def _compute_sale_tax_data(self):  # noqa: C901
+    def _compute_sale_tax_data(self):
         """Agrega desglose de bases e IVA por alícuota en facturas de venta.
 
         Notes
@@ -2328,15 +2328,31 @@ Please create a credit note instead.
             return True
         return self._l10n_ve_allows_invoice_pdf_download()
 
+    def _l10n_ve_get_download_pdf_print_item(self):
+        """Build the 'Download PDF' print-menu item.
+
+        Odoo 19 core dropped the ``download_pdf`` entry from
+        ``get_extra_print_items`` (only a ZIP ``download_all`` remains, gated by
+        legal documents). VE fiscal invoices still need an explicit PDF download
+        action, so l10n_ve provides it here reusing the core act_url endpoint.
+        """
+        return {
+            "key": "download_pdf",
+            "description": _("Download PDF"),
+            **self.action_invoice_download_pdf(),
+        }
+
     def get_extra_print_items(self):
         ve_invoices = self.filtered(
             lambda move: move.country_code == "VE"
             and move.move_type in ("out_invoice", "out_refund")
         )
-        if ve_invoices and any(
-            not move._l10n_ve_show_download_pdf_action() for move in ve_invoices
-        ):
-            return []
+        if ve_invoices:
+            if any(
+                not move._l10n_ve_show_download_pdf_action() for move in ve_invoices
+            ):
+                return []
+            return [self._l10n_ve_get_download_pdf_print_item()]
         return super().get_extra_print_items()
 
     def _l10n_ve_check_invoice_print_allowed(self):

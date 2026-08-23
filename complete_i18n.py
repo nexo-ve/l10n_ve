@@ -1622,7 +1622,7 @@ def main():
 
     print(f"Repositorio: {REPO_ROOT}")
     print(f"Archivos: {len(po_files)}")
-    print("")
+    print()
 
     for po_path in po_files:
         module, filled = complete_po_file(po_path, translator, dry_run=args.dry_run)
@@ -1633,7 +1633,7 @@ def main():
         else:
             print(f"[SKIP] {module}: sin traducciones pendientes")
 
-    print("")
+    print()
     print(f"Total: {total_filled} traducciones {'a completar' if args.dry_run else 'completadas'}.")
     return 0
 

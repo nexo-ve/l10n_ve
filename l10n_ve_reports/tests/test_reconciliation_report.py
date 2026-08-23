@@ -228,8 +228,8 @@ class TestReconciliationReport(TestAccountReportsCommon):
 
     def test_reconciliation_report_multi_currencies(self):
         """Tests the management of multi-currencies in the reconciliation report."""
-        self.env.user.groups_id |= self.env.ref("base.group_multi_currency")
-        self.env.user.groups_id |= self.env.ref("base.group_no_one")
+        self.env.user.group_ids |= self.env.ref("base.group_multi_currency")
+        self.env.user.group_ids |= self.env.ref("base.group_no_one")
 
         company_currency = self.company_data["currency"]  # USD
         journal_currency = self.other_currency  # EUR

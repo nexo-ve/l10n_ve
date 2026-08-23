@@ -370,9 +370,9 @@ class ECSalesReportCustomHandler(models.AbstractModel):
 
         # Execute the queries and dispatch the results.
         query = self._get_query_sums(report, options)
-        self._cr.execute(query)
+        self.env.cr.execute(query)
 
-        dictfetchall = self._cr.dictfetchall()
+        dictfetchall = self.env.cr.dictfetchall()
         for res in dictfetchall:
             assign_sum(res)
 

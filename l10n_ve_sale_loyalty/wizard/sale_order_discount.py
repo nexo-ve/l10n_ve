@@ -4,7 +4,9 @@ from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools import float_compare
 
-from odoo.addons.l10n_ve_loyalty.models import l10n_ve_global_discount as l10n_ve_discount_logic
+from odoo.addons.l10n_ve_loyalty.models import (
+    l10n_ve_global_discount as l10n_ve_discount_logic,
+)
 
 
 class SaleOrderDiscount(models.TransientModel):
@@ -70,7 +72,7 @@ class SaleOrderDiscount(models.TransientModel):
             disc_product = order.company_id.sale_discount_product_id
             if disc_product and line.product_id == disc_product:
                 continue
-            taxes = line.tax_id.flatten_taxes_hierarchy()
+            taxes = line.tax_ids.flatten_taxes_hierarchy()
             taxes -= taxes.filtered(lambda tax: tax.amount_type == "fixed")
             line_base = line.price_unit * (1 - (line.discount or 0.0) / 100) * line.product_uom_qty
             total_discount += line_base * discount_percentage

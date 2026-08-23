@@ -81,13 +81,12 @@ class TestAccountTaxGroupL10nVe(L10nVeSeniatCommon):
             group.write({"l10n_ve_aliquot_type": "general"})
 
     def test_aliquot_type_unique_per_company(self):
-        with self.assertRaises(Exception):
-            with self.cr.savepoint():
-                self._create_ve_tax_group(
-                    "General duplicado",
-                    l10n_ve_aliquot_type="general",
-                    sequence=25,
-                )
+        with self.assertRaises(Exception), self.cr.savepoint():
+            self._create_ve_tax_group(
+                "General duplicado",
+                l10n_ve_aliquot_type="general",
+                sequence=25,
+            )
 
     def test_report_tax_groups_ordered_by_sequence(self):
         self.general_group.sequence = 5

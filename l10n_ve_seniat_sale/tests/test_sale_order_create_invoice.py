@@ -25,6 +25,12 @@ class TestSaleOrderCreateInvoice(L10nVeSeniatCommon):
                 "supplier_taxes_id": [
                     (6, 0, [self.company_data["default_tax_purchase"].id])
                 ],
+                "property_account_income_id": self.company_data[
+                    "default_account_revenue"
+                ].id,
+                "property_account_expense_id": self.company_data[
+                    "default_account_expense"
+                ].id,
             }
         )
         return tmpl.product_variant_ids[0]

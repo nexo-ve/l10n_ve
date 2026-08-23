@@ -101,18 +101,14 @@ class AccountBook(models.Model):
         sanitize=False,
     )
 
-    _sql_constraints = [
-        (
-            "account_book_number_range",
-            "CHECK(number_from <= number_to)",
-            "The start number must be less than or equal to the end number.",
-        ),
-        (
-            "account_book_number_positive",
-            "CHECK(number_from >= 0 AND number_to >= 0)",
-            "Numbers must be positive or zero.",
-        ),
-    ]
+    _account_book_number_range = models.Constraint(
+        'CHECK(number_from <= number_to)',
+        "The start number must be less than or equal to the end number.",
+    )
+    _account_book_number_positive = models.Constraint(
+        'CHECK(number_from >= 0 AND number_to >= 0)',
+        "Numbers must be positive or zero.",
+    )
 
     @api.depends("section_ids")
     def _compute_section_count(self):
@@ -565,18 +561,14 @@ class AccountBookSection(models.Model):
         ondelete="restrict",
     )
 
-    _sql_constraints = [
-        (
-            "account_book_section_number_range",
-            "CHECK(number_from <= number_to)",
-            "The section start number must be less than or equal to the end number.",
-        ),
-        (
-            "account_book_section_number_positive",
-            "CHECK(number_from >= 0 AND number_to >= 0)",
-            "Section numbers must be positive or zero.",
-        ),
-    ]
+    _account_book_section_number_range = models.Constraint(
+        'CHECK(number_from <= number_to)',
+        "The section start number must be less than or equal to the end number.",
+    )
+    _account_book_section_number_positive = models.Constraint(
+        'CHECK(number_from >= 0 AND number_to >= 0)',
+        "Section numbers must be positive or zero.",
+    )
 
     @api.constrains("number_from", "number_to", "book_id")
     def _check_section_in_book(self):
@@ -758,18 +750,14 @@ class AccountBookDocument(models.Model):
         compute="_compute_l10n_ve_correlative_label",
     )
 
-    _sql_constraints = [
-        (
-            "account_book_document_number_book_uniq",
-            "UNIQUE(book_id, number)",
-            "This correlative number is already used in this book.",
-        ),
-        (
-            "account_book_document_book_res_uniq",
-            "UNIQUE(book_id, res_model, res_id)",
-            "This record is already linked to a correlative in this book.",
-        ),
-    ]
+    _account_book_document_number_book_uniq = models.Constraint(
+        'UNIQUE(book_id, number)',
+        "This correlative number is already used in this book.",
+    )
+    _account_book_document_book_res_uniq = models.Constraint(
+        'UNIQUE(book_id, res_model, res_id)',
+        "This record is already linked to a correlative in this book.",
+    )
 
     @api.model
     def _selection_document_ref(self):
@@ -935,9 +923,7 @@ class AccountBookDocument(models.Model):
                 continue
             book_company = line.book_id.company_id
             doc_company = False
-            if line.res_model == "account.move" and "company_id" in ref._fields:
-                doc_company = ref.company_id
-            elif line.res_model == "stock.picking" and "company_id" in ref._fields:
+            if line.res_model == "account.move" and "company_id" in ref._fields or line.res_model == "stock.picking" and "company_id" in ref._fields:
                 doc_company = ref.company_id
             if doc_company and doc_company != book_company:
                 raise ValidationError(

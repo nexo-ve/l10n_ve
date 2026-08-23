@@ -4,6 +4,7 @@ from datetime import date
 
 from dateutil.relativedelta import relativedelta
 from lxml import html as lxml_html
+
 from odoo import Command, fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import tagged

@@ -4,8 +4,9 @@ from werkzeug.exceptions import NotFound
 from werkzeug.utils import redirect
 
 from odoo import exceptions
-from odoo.addons.l10n_ve_stock.controllers.portal import L10nVeStockPortal
 from odoo.http import request, route
+
+from odoo.addons.l10n_ve_stock.controllers.portal import L10nVeStockPortal
 
 
 class L10nVeEdiTfhkaPortal(L10nVeStockPortal):

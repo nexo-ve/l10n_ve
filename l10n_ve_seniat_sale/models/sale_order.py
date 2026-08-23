@@ -177,7 +177,7 @@ class SaleOrder(models.Model):
             if line.display_type or line.is_downpayment:
                 continue
             qty = getattr(line, qty_field, 0.0)
-            rounding = line.product_uom.rounding if line.product_uom else 1e-9
+            rounding = line.product_uom_id.rounding if line.product_uom_id else 1e-9
             if float_is_zero(qty, precision_rounding=rounding):
                 continue
             price_reduce = line.price_unit * (1 - (line.discount or 0.0) / 100.0)
@@ -274,7 +274,7 @@ class SaleOrder(models.Model):
     def _l10n_ve_chunk_subtotal_for_discount(self, chunk_lines, discount_line):
         self.ensure_one()
         disc = self.company_id.sale_discount_product_id
-        disc_taxes = discount_line.tax_id.flatten_taxes_hierarchy().filtered(
+        disc_taxes = discount_line.tax_ids.flatten_taxes_hierarchy().filtered(
             lambda tax: tax.amount_type != "fixed"
         )
         subtotal = 0.0
@@ -283,13 +283,13 @@ class SaleOrder(models.Model):
                 continue
             if disc and line.product_id == disc:
                 continue
-            line_taxes = line.tax_id.flatten_taxes_hierarchy().filtered(
+            line_taxes = line.tax_ids.flatten_taxes_hierarchy().filtered(
                 lambda tax: tax.amount_type != "fixed"
             )
             if line_taxes != disc_taxes:
                 continue
             qty = line.qty_to_invoice
-            if float_is_zero(qty, precision_rounding=line.product_uom.rounding):
+            if float_is_zero(qty, precision_rounding=line.product_uom_id.rounding):
                 continue
             price_reduce = line.price_unit * (1 - (line.discount or 0.0) / 100.0)
             subtotal += price_reduce * qty
@@ -368,7 +368,7 @@ class SaleOrder(models.Model):
         chunk_weights_by_discount = {}
         for dline in disc_lines:
             qty = dline.qty_to_invoice
-            if float_is_zero(qty, precision_rounding=dline.product_uom.rounding):
+            if float_is_zero(qty, precision_rounding=dline.product_uom_id.rounding):
                 continue
             weights = [
                 self._l10n_ve_chunk_subtotal_for_discount(chunk, dline)
@@ -576,7 +576,7 @@ class SaleOrder(models.Model):
                     and float_compare(
                         line.product_uom_qty,
                         0.0,
-                        precision_rounding=line.product_uom.rounding,
+                        precision_rounding=line.product_uom_id.rounding,
                     )
                     <= 0
                 )
@@ -601,9 +601,9 @@ class SaleOrder(models.Model):
                 order._l10n_ve_check_free_emission_correlatives()
                 default_tax = order.company_id.account_sale_tax_id
                 for line in order.order_line.filtered(lambda line: not line.display_type):
-                    if len(line.tax_id) == 0:
+                    if len(line.tax_ids) == 0:
                         if default_tax:
-                            line.tax_id = [Command.link(default_tax.id)]
+                            line.tax_ids = [Command.link(default_tax.id)]
                             order.message_post(
                                 body=_("Se agregó el impuesto por defecto a la línea: %s.")
                                 % (line.name or _("Sin nombre"))
@@ -618,8 +618,8 @@ class SaleOrder(models.Model):
                             )
                 lines_with_multi_tax = []
                 for line in order.order_line.filtered(lambda line: not line.display_type):
-                    if len(line.tax_id) > 1:
-                        tax_mapped = ", ".join(line.tax_id.mapped("name"))
+                    if len(line.tax_ids) > 1:
+                        tax_mapped = ", ".join(line.tax_ids.mapped("name"))
                         lines_with_multi_tax.append(" - %s: %s" % (line.name or _("Sin nombre"), tax_mapped))
                 if lines_with_multi_tax:
                     raise UserError(

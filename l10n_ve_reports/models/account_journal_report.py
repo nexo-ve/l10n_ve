@@ -3,12 +3,13 @@ import datetime
 import io
 from collections import defaultdict
 
+import xlsxwriter
 from markupsafe import Markup
 from PIL import ImageFont
 
 from odoo import _, models
 from odoo.tools import SQL
-from odoo.tools.misc import file_path, xlsxwriter
+from odoo.tools.misc import file_path
 
 XLSX_GRAY_200 = "#EEEEEE"
 XLSX_BORDER_COLOR = "#B4B4B4"
@@ -129,8 +130,8 @@ class JournalReportCustomHandler(models.AbstractModel):
             case_statement=self._get_payment_lines_filter_case_statement(options),
             groupby_clause=groupby_clause,
         )
-        self._cr.execute(query)
-        query_lines = self._cr.dictfetchall()
+        self.env.cr.execute(query)
+        query_lines = self.env.cr.dictfetchall()
         result_lines = []
 
         for query_line in query_lines:
@@ -1062,11 +1063,11 @@ class JournalReportCustomHandler(models.AbstractModel):
             tag_name=self.env["account.account.tag"]._field_to_sql("tag", "name"),
         )
 
-        self._cr.execute(query)
+        self.env.cr.execute(query)
         result = {}
 
         # Grouping by journal_id then move_id
-        for entry in self._cr.dictfetchall():
+        for entry in self.env.cr.dictfetchall():
             result.setdefault(entry["journal_id"], {})
             result[entry["journal_id"]].setdefault(entry["move_id"], [])
             result[entry["journal_id"]][entry["move_id"]].append(entry)
@@ -1522,8 +1523,8 @@ class JournalReportCustomHandler(models.AbstractModel):
             table=query.from_clause,
             search_conditions=query.where_clause,
         )
-        self._cr.execute(query)
-        result = self._cr.dictfetchall()
+        self.env.cr.execute(query)
+        result = self.env.cr.dictfetchall()
         init_balance = result[0]["balance"] if len(result) >= 1 else 0
         return init_balance
 
@@ -1685,7 +1686,7 @@ class JournalReportCustomHandler(models.AbstractModel):
             table_references=query.from_clause,
             search_condition=query.where_clause,
         )
-        self._cr.execute(query)
+        self.env.cr.execute(query)
         query_res = self.env.cr.fetchall()
 
         res = {}

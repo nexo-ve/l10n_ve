@@ -79,7 +79,7 @@ class TestSaleOrderNativeReport(L10nVeSeniatCommon):
         )
         self.assertLess(
             html.index('name="td_default_code"'),
-            html.index('name="td_name"'),
+            html.index('name="td_product_name"'),
         )
 
     def test_native_sale_report_uses_product_name_as_description(self):

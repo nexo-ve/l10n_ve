@@ -1,6 +1,7 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import format_date
+
 from odoo.addons.web.controllers.utils import clean_action
 
 

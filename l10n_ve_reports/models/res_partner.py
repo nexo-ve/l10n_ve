@@ -1,6 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models
+from odoo import models
 
 
 class ResPartner(models.Model):
@@ -106,7 +106,7 @@ class ResPartner(models.Model):
                 "type": "invoice",
             }
         )
-        duplicated_partners_vat = self._context.get("duplicated_partners_vat", [])
+        duplicated_partners_vat = self.env.context.get("duplicated_partners_vat", [])
         remaining_vats = [
             pvat for pvat in duplicated_partners_vat if pvat != main_partner.vat
         ]

@@ -10,7 +10,7 @@ class TestAccountPaymentMethodLineFiscal(L10nVeSeniatCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env.user.groups_id |= cls.env.ref("l10n_ve_seniat.group_seniat")
+        cls.env.user.group_ids |= cls.env.ref("l10n_ve_seniat.group_seniat")
         cls.company._l10n_ve_fiscal_ensure_payment_methods()
         cls.fiscal_method_01 = cls.env["l10n.ve.fiscal.payment.method"].search(
             [("company_id", "=", cls.company.id), ("code", "=", "01")],
@@ -53,6 +53,9 @@ class TestAccountPaymentMethodLineFiscal(L10nVeSeniatCommon):
                             "name": "Producto",
                             "quantity": 1,
                             "price_unit": 100,
+                            "account_id": self.company_data[
+                                "default_account_revenue"
+                            ].id,
                         },
                     )
                 ],
@@ -103,6 +106,9 @@ class TestAccountPaymentMethodLineFiscal(L10nVeSeniatCommon):
                             "name": "Producto",
                             "quantity": 1,
                             "price_unit": 50,
+                            "account_id": self.company_data[
+                                "default_account_revenue"
+                            ].id,
                         },
                     )
                 ],

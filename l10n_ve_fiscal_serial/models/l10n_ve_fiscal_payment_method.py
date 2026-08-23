@@ -64,13 +64,10 @@ class L10nVeFiscalPaymentMethod(models.Model):
             name = method.name or ""
             method.display_name = f"{code} - {name}".strip(" -")
 
-    _sql_constraints = [
-        (
-            "code_company_uniq",
-            "unique(code, company_id)",
-            "Ya existe un método de pago fiscal con este código en la compañía.",
-        ),
-    ]
+    _code_company_uniq = models.Constraint(
+        'unique(code, company_id)',
+        "Ya existe un método de pago fiscal con este código en la compañía.",
+    )
 
     @api.constrains("code")
     def _check_code(self):

@@ -148,13 +148,10 @@ class L10nVeFiscalMachine(models.Model):
     sv_raw = fields.Text(readonly=True)
     audit_count = fields.Integer(compute="_compute_audit_count")
 
-    _sql_constraints = [
-        (
-            "registered_serial_company_uniq",
-            "unique(registered_serial, company_id)",
-            "Ya existe una máquina fiscal con este serial en la compañía.",
-        ),
-    ]
+    _registered_serial_company_uniq = models.Constraint(
+        'unique(registered_serial, company_id)',
+        "Ya existe una máquina fiscal con este serial en la compañía.",
+    )
 
     def _compute_audit_count(self):
         audit_model = self.env["l10n.ve.fiscal.serial.audit"]

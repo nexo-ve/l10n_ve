@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <delete model="report.layout" id="report_layout_l10n_ve_presupuesto" />
-    <delete model="ir.ui.view" id="external_layout_l10n_ve_presupuesto" />
-    <delete model="ir.ui.view" id="report_saleorder_document_ve" />
-    <delete model="ir.ui.view" id="quote_document_layout_preview_ve" />
-    <delete model="report.paperformat" id="paperformat_presupuesto_ve_letter_4cm" />
+    <!--
+        One-shot cleanup of legacy custom quote layout records. On a fresh
+        install these external IDs do not exist, so a plain <delete id="..."/>
+        would raise. Using search-based <delete> makes it idempotent: it unlinks
+        matching records if present and is a no-op otherwise.
+    -->
+    <delete model="report.layout" search="[('view_id.key', '=', 'l10n_ve_seniat_sale.external_layout_l10n_ve_presupuesto')]" />
+    <delete model="ir.ui.view" search="[('key', '=', 'l10n_ve_seniat_sale.external_layout_l10n_ve_presupuesto')]" />
+    <delete model="ir.ui.view" search="[('key', '=', 'l10n_ve_seniat_sale.report_saleorder_document_ve')]" />
+    <delete model="ir.ui.view" search="[('key', '=', 'l10n_ve_seniat_sale.quote_document_layout_preview_ve')]" />
+    <delete model="report.paperformat" search="[('name', '=', 'Presupuesto VE Letter 4cm')]" />
 </odoo>

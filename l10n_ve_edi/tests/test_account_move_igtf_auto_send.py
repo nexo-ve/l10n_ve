@@ -1,7 +1,7 @@
 from unittest import SkipTest
 from unittest.mock import patch
 
-from odoo import Command, fields
+from odoo import Command
 from odoo.tests import tagged
 
 from odoo.addons.l10n_ve_igtf.tests.common import TestL10nVeIgtfCommon

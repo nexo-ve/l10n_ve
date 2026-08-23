@@ -210,7 +210,7 @@ class ResCompany(models.Model):
                 [
                     ("company_ids", "in", self.ids),
                     (
-                        "groups_id",
+                        "group_ids",
                         "in",
                         self.env.ref("account.group_account_manager").ids,
                     ),

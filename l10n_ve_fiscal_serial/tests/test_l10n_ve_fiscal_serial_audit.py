@@ -10,7 +10,7 @@ class TestL10nVeFiscalSerialAudit(L10nVeSeniatCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env.user.groups_id |= cls.env.ref("l10n_ve_seniat.group_seniat")
+        cls.env.user.group_ids |= cls.env.ref("l10n_ve_seniat.group_seniat")
 
     def test_log_fiscal_serial_events(self):
         audit_model = self.env["l10n.ve.fiscal.serial.audit"]

@@ -1,6 +1,6 @@
 from odoo import _, fields, models
-from odoo.fields import Command
 from odoo.exceptions import ValidationError
+from odoo.fields import Command
 
 
 class AccountMove(models.Model):

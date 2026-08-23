@@ -1,11 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_economic_branch_tree_l10n_ve_withholding" model="ir.ui.view">
         <field name="name">view.economic.branch.list.l10n.ve.payment.extension</field>
         <field name="model">economic.branch</field>
         <field name="arch" type="xml">
             <list>
-                <field name="name" />
-                <field name="status" />
+                <field name="name"/>
+                <field name="status"/>
             </list>
         </field>
     </record>
@@ -17,8 +18,8 @@
             <form string="Economic branch">
                 <sheet string="Economic branch">
                     <group>
-                        <field name="name" />
-                        <field name="status" />
+                        <field name="name"/>
+                        <field name="status"/>
                     </group>
                 </sheet>
             </form>
@@ -30,19 +31,11 @@
         <field name="model">economic.branch</field>
         <field name="arch" type="xml">
             <search>
-                <field name="name" />
-                <field name="status" />
-                <filter
-                    string="Active"
-                    name="status"
-                    domain="[('status', '=', 'active')]"
-                />
-                <group expand="1" string="Group by">
-                    <filter
-                        string="Status"
-                        name='status'
-                        context="{'group_by':'status'}"
-                    />
+                <field name="name"/>
+                <field name="status"/>
+                <filter string="Active" name="status" domain="[('status', '=', 'active')]"/>
+                <group>
+                    <filter string="Status" name="status" context="{'group_by':'status'}"/>
                 </group>
             </search>
         </field>

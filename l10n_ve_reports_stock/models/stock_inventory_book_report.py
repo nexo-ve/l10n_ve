@@ -3,7 +3,7 @@
 from collections import defaultdict
 
 from odoo import fields, models
-from odoo.osv import expression
+from odoo.fields import Domain
 from odoo.tools.float_utils import float_is_zero
 
 
@@ -143,7 +143,7 @@ class StockInventoryBookReportHandler(models.AbstractModel):
             ("date", "<", fields.Datetime.to_string(date_to_end)),
         ]
         if stock_location_ids:
-            move_domain = expression.AND(
+            move_domain = Domain.AND(
                 [
                     move_domain,
                     [

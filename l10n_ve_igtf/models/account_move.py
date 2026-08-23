@@ -1239,7 +1239,6 @@ class AccountMove(models.Model):
     def _l10n_ve_igtf_get_display_tax_group_amounts_from_pos(self):
         """Punto de extensión (p. ej. l10n_ve_pos_igtf): devolver tupla 4 valores o None."""
         self.ensure_one()
-        return None
 
     def _l10n_ve_igtf_get_display_tax_group_amounts_generic(self):
         """Origen del IGTF para tax_totals: factura, preview, POS (hook), cobros."""

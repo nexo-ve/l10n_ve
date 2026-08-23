@@ -10,7 +10,7 @@ class TestL10nVeIrUiMenu(L10nVeSeniatCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env.user.groups_id |= cls.env.ref("l10n_ve_seniat.group_seniat")
+        cls.env.user.group_ids |= cls.env.ref("l10n_ve_seniat.group_seniat")
         cls.menu = cls.env.ref(
             "l10n_ve_fiscal_serial.menu_seniat_fiscal_machines",
             raise_if_not_found=False,

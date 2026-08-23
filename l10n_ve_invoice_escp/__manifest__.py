@@ -1,6 +1,6 @@
 {
     "name": "Venezuela — Factura ESC/P Epson (WebUSB)",
-    "version": "18.0.1.0.13",
+    "version": "19.0.1.0.0",
     "category": "Accounting/Localizations",
     "summary": "Impresión de facturas VE en papel continuo vía WebUSB (ESC/P Epson)",
     "author": "andyengit",

@@ -37,7 +37,7 @@
                 />
             </xpath>
             <xpath
-                expr="//field[@name='order_line']//list//field[@name='tax_id']"
+                expr="//field[@name='order_line']//list//field[@name='tax_ids']"
                 position="attributes"
             >
                 <attribute
@@ -45,7 +45,7 @@
                 >parent.country_code == 'VE' or qty_invoiced &gt; 0 or is_downpayment</attribute>
             </xpath>
             <xpath
-                expr="//field[@name='order_line']//form//field[@name='tax_id']"
+                expr="//field[@name='order_line']//form//field[@name='tax_ids']"
                 position="attributes"
             >
                 <attribute

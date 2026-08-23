@@ -11,7 +11,7 @@ class TestAccountJournalFiscalMachine(L10nVeSeniatCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env.user.groups_id |= cls.env.ref("l10n_ve_seniat.group_seniat")
+        cls.env.user.group_ids |= cls.env.ref("l10n_ve_seniat.group_seniat")
 
     def _create_machine(self):
         return self.env["l10n.ve.fiscal.machine"].create(

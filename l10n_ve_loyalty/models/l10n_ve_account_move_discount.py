@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 
-from odoo import _, api, fields, models, Command
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare, float_is_zero, float_round, frozendict
 

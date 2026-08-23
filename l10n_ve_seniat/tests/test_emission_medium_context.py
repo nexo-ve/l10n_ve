@@ -73,7 +73,7 @@ class TestL10nVeEmissionMediumSession(HttpCase):
             {
                 "company_id": default_company.id,
                 "company_ids": [(4, other.id)],
-                "groups_id": [(4, self.env.ref("l10n_ve_seniat.group_seniat").id)],
+                "group_ids": [(4, self.env.ref("l10n_ve_seniat.group_seniat").id)],
             }
         )
         self.authenticate("admin", "admin")

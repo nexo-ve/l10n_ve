@@ -1,37 +1,30 @@
-import os
-import logging
-import time
-import serial
-import serial.tools.list_ports
-import operator
 import datetime
-import sys
-import json
-import glob
-import urllib3
+import logging
+import operator
+import os
 import platform
-from functools import reduce
-import traceback
 import subprocess
+import sys
+import time
+import traceback
 from collections import defaultdict
 from datetime import datetime
-from odoo.exceptions import UserError
+from functools import reduce
+
+import serial
+import serial.tools.list_ports
+
 # import clr
-from odoo import http, _
+from odoo import _, http
+from odoo.exceptions import UserError
 from odoo.tools.misc import file_path
-from odoo.addons.hw_drivers.main import iot_devices
-from odoo.addons.hw_drivers.event_manager import event_manager
-from odoo.addons.hw_drivers.tools import helpers
+
 from odoo.addons.hw_drivers.controllers.driver import DriverController
+from odoo.addons.hw_drivers.event_manager import event_manager
 from odoo.addons.hw_drivers.iot_handlers.drivers.SerialBaseDriver import (
     SerialDriver,
     SerialProtocol,
-    serial_connection,
 )
-
-from odoo.http import Response
-
-import json
 
 FLAG_21 = {
     "30": {
@@ -86,7 +79,7 @@ TAX = {
 class BinauralDriverController(DriverController):
     @http.route(
         "/hw_drivers/event",
-        type="json",
+        type="jsonrpc",
         auth="none",
         cors="*",
         csrf=False,
@@ -169,7 +162,7 @@ class SerialFiscalDriver(SerialDriver):
     ##
 
     def __init__(self, identifier, device):
-        super(SerialFiscalDriver, self).__init__(identifier, device)
+        super().__init__(identifier, device)
         self.device_manufacturer = "HKA"
         self.identifier = identifier
         self.device_type = "fiscal_data_module"
@@ -246,7 +239,7 @@ class SerialFiscalDriver(SerialDriver):
         """
         Carga la librería TfhkaNet.dll.
         """
-        self.dll_path = file_path(f'hw_drivers/iot_handlers/lib/TfhkaNet.dll')
+        self.dll_path = file_path('hw_drivers/iot_handlers/lib/TfhkaNet.dll')
         if not os.path.exists(self.dll_path):
             _logger.error("No se encontró la DLL en la ruta: %s", self.dll_path)
             return
@@ -649,13 +642,13 @@ class SerialFiscalDriver(SerialDriver):
             if invoice_data.get("has_cashbox", False):
                 cmd.append("w")
             
-            cmd.append(str("101"))
+            cmd.append("101")
             
             if len(invoice_data.get("aditional_lines", [])) > 0:
                 for index, aditional_lines in enumerate(invoice_data.get("aditional_lines")):
                     cmd.append(f"i{str(index).zfill(2)}{aditional_lines}")
                                 
-            cmd.append(str("199"))
+            cmd.append("199")
             
             self.data["value"] = {"valid": True, "data": cmd}
             
@@ -899,7 +892,7 @@ class SerialFiscalDriver(SerialDriver):
                  number = invoice.get("barcode")
                  numberint = number[0]
                  cmd.append(str("y" + str(numberint)))
-            cmd.append(str("3"))  # sub total en factura
+            cmd.append("3")  # sub total en factura
 
             if discount_amount > 0:
                 amount_i, amount_d = self.split_amount(
@@ -928,9 +921,7 @@ class SerialFiscalDriver(SerialDriver):
             for item in new_payment_lines:
                 item["amount"] = abs(item["amount"])
 
-            if len(invoice["payment_lines"]) == 1 or invoice["payment_lines"][0]["amount"] == 0:
-                cmd.append("1" + str(invoice["payment_lines"][0]["payment_method"]))
-            elif len(invoice["payment_lines"]) > 1 and len(
+            if len(invoice["payment_lines"]) == 1 or invoice["payment_lines"][0]["amount"] == 0 or len(invoice["payment_lines"]) > 1 and len(
                 list(filter(filter_unique_type_method, invoice["payment_lines"]))
             ) == len(invoice["payment_lines"]):
                 cmd.append("1" + str(invoice["payment_lines"][0]["payment_method"]))
@@ -949,11 +940,11 @@ class SerialFiscalDriver(SerialDriver):
                         )
                     )
 
-            cmd.append(str("101"))
+            cmd.append("101")
             if len(invoice.get("aditional_lines", [])) > 0:
                 for index, aditional_lines in enumerate(invoice.get("aditional_lines")):
                     cmd.append(f"i{str(index).zfill(2)}{aditional_lines}")
-            cmd.append(str("199"))
+            cmd.append("199")
 
             for command in cmd:
                 self.send_command(command)

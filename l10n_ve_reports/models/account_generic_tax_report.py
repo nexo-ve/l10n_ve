@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import RedirectWarning, UserError
-from odoo.osv import expression
+from odoo.fields import Domain
 from odoo.tools import SQL
 
 from odoo.addons.web.controllers.utils import clean_action
@@ -456,7 +456,7 @@ class AccountTaxReportHandler(models.AbstractModel):
                             {
                                 "name": tax_name,
                                 "debit": abs(amt) if amt < 0 else 0,
-                                "credit": amt if amt > 0 else 0,
+                                "credit": max(0, amt),
                                 "account_id": account_id,
                             },
                         )
@@ -674,7 +674,7 @@ class AccountTaxReportHandler(models.AbstractModel):
                             "name": _("Payable tax amount")
                             if total < 0
                             else _("Receivable tax amount"),
-                            "debit": total if total > 0 else 0,
+                            "debit": max(0, total),
                             "credit": abs(total) if total < 0 else 0,
                             "account_id": key[2] if total < 0 else key[1],
                         }
@@ -912,7 +912,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
             .with_context(active_test=False)
             ._where_calc(company_domain)
         )
-        self._cr.execute(
+        self.env.cr.execute(
             SQL(
                 """
                 SELECT
@@ -932,7 +932,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
         )
         group_of_taxes_info = {}
         child_to_group_of_taxes = {}
-        for row in self._cr.dictfetchall():
+        for row in self.env.cr.dictfetchall():
             row["to_expand"] = row["child_types"] != ["none"]
             group_of_taxes_info[row["id"]] = row
             for child_id in row["child_tax_ids"]:
@@ -991,7 +991,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
             query = report._get_report_query(options, "strict_range")
 
             # Fetch the base amounts.
-            self._cr.execute(
+            self.env.cr.execute(
                 SQL(
                     """
                 SELECT
@@ -1039,7 +1039,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
             )
 
             group_of_taxes_with_extra_base_amount = set()
-            for row in self._cr.dictfetchall():
+            for row in self.env.cr.dictfetchall():
                 is_tax_line = bool(row["src_tax_id"])
                 if is_tax_line:
                     if (
@@ -1107,7 +1107,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
                     ", repartition.use_in_tax_closing, SIGN(repartition.factor_percent)"
                 )
 
-            self._cr.execute(
+            self.env.cr.execute(
                 SQL(
                     """
                 SELECT
@@ -1143,7 +1143,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
                 )
             )
 
-            for row in self._cr.dictfetchall():
+            for row in self.env.cr.dictfetchall():
                 # Manage group of taxes.
                 # In case the group of taxes is mixing multiple taxes having a type_tax_use != 'none', consider
                 # them instead of the group.
@@ -1252,7 +1252,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
             # It could happen when dealing with group of taxes for example.
             row_keys = set()
 
-            self._cr.execute(
+            self.env.cr.execute(
                 SQL(
                     """
                 SELECT
@@ -1277,7 +1277,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
                 )
             )
 
-            for row in self._cr.dictfetchall():
+            for row in self.env.cr.dictfetchall():
                 node = res
 
                 # tuple of values used to prevent adding multiple times the same base amount.
@@ -1560,7 +1560,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
                 0,
             )
 
-            if net_value == "":  # noqa: PLC1901
+            if net_value == "":
                 continue
 
             currency = self.env.company.currency_id
@@ -1606,7 +1606,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
                 ("tax_repartition_line_id", "!=", False),
             ]
 
-        domain = report._get_options_domain(options, "strict_range") + expression.OR(
+        domain = report._get_options_domain(options, "strict_range") + Domain.OR(
             (
                 # Base lines
                 [
@@ -1625,7 +1625,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
             )
         )
 
-        ctx = self._context.copy()
+        ctx = self.env.context.copy()
         ctx.update({"search_default_group_by_account": 2, "expand": 1})
 
         return {

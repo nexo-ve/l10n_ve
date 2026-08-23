@@ -426,7 +426,7 @@ class AccountRetention(models.Model):
         self.ensure_one()
         partner = self._l10n_ve_edi_get_subject_partner()
         prefix, number = self._l10n_ve_edi_get_subject_identification()
-        phone = partner.mobile or partner.phone or ""
+        phone = partner.phone or ""
         email_list = [partner.email] if partner.email else []
         phone_list = [phone] if phone else []
         return {

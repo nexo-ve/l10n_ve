@@ -239,22 +239,15 @@ class GeneralLedgerCustomHandler(models.AbstractModel):
         groupby_accounts = {}
         groupby_companies = {}
 
-        self._cr.execute(query)
-        for res in self._cr.dictfetchall():
+        self.env.cr.execute(query)
+        for res in self.env.cr.dictfetchall():
             # No result to aggregate.
             if res["groupby"] is None:
                 continue
 
             column_group_key = res["column_group_key"]
             key = res["key"]
-            if key == "sum":
-                groupby_accounts.setdefault(
-                    res["groupby"],
-                    {col_group_key: {} for col_group_key in options["column_groups"]},
-                )
-                groupby_accounts[res["groupby"]][column_group_key][key] = res
-
-            elif key == "initial_balance":
+            if key == "sum" or key == "initial_balance":
                 groupby_accounts.setdefault(
                     res["groupby"],
                     {col_group_key: {} for col_group_key in options["column_groups"]},
@@ -504,10 +497,10 @@ class GeneralLedgerCustomHandler(models.AbstractModel):
         aml_query = self._get_query_amls(
             report, options, expanded_account_ids, offset=offset, limit=limit
         )
-        self._cr.execute(aml_query)
+        self.env.cr.execute(aml_query)
         aml_results_number = 0
         has_more = False
-        for aml_result in self._cr.dictfetchall():
+        for aml_result in self.env.cr.dictfetchall():
             aml_results_number += 1
             if aml_results_number == limit:
                 has_more = True
@@ -718,7 +711,7 @@ class GeneralLedgerCustomHandler(models.AbstractModel):
                 )
             )
 
-        self._cr.execute(SQL(" UNION ALL ").join(queries))
+        self.env.cr.execute(SQL(" UNION ALL ").join(queries))
 
         init_balance_by_col_group = {
             account_id: {
@@ -726,7 +719,7 @@ class GeneralLedgerCustomHandler(models.AbstractModel):
             }
             for account_id in account_ids
         }
-        for result in self._cr.dictfetchall():
+        for result in self.env.cr.dictfetchall():
             init_balance_by_col_group[result["groupby"]][result["column_group_key"]] = (
                 result
             )

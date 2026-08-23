@@ -1,6 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import Command, fields
+
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 
 
@@ -35,6 +36,32 @@ class L10nVeSeniatCommon(AccountTestInvoicingCommon):
         )
         cls._l10n_ve_normalize_fixture_products()
         cls._l10n_ve_normalize_fixture_partners()
+        cls._l10n_ve_grant_optional_test_groups()
+
+    @classmethod
+    def _l10n_ve_grant_optional_test_groups(cls):
+        """Grant sale/stock groups to the test user when those modules are
+        installed.
+
+        Odoo 19's ``AccountTestInvoicingCommon.get_default_groups()`` no longer
+        includes any Sales group, so downstream l10n_ve sale/stock modules whose
+        tests must create sale.order records would hit an AccessError. Grant the
+        relevant groups only when the corresponding module (and its group xmlid)
+        is available, so the base seniat tests are unaffected.
+        """
+        optional_groups = (
+            "sales_team.group_sale_salesman_all_leads",
+            "sales_team.group_sale_salesman",
+            "sales_team.group_sale_manager",
+            "sale.group_delivery_invoice_address",
+        )
+        groups = cls.env["res.groups"].browse()
+        for xmlid in optional_groups:
+            group = cls.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                groups |= group
+        if groups:
+            cls.env.user.sudo().write({"group_ids": [Command.link(g.id) for g in groups]})
 
     @classmethod
     def _l10n_ve_normalize_fixture_partners(cls):

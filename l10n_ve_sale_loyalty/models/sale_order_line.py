@@ -18,7 +18,7 @@ class SaleOrderLine(models.Model):
             "product_uom_qty",
             "price_unit",
             "discount",
-            "tax_id",
+            "tax_ids",
             "product_id",
             "display_type",
         }:

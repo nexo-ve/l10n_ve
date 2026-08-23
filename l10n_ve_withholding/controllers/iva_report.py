@@ -20,7 +20,7 @@ class GenerateTxt(http.Controller):
 
         data = request.env["wizard.retention.iva"]._retention_iva(retentions)
         f = StringIO()
-        for l in data:  # noqa: E741
+        for l in data:
             f.write(l.get("RIF del agente de retención") + "\t")
             f.write(str(l.get("Período impositivo")) + "\t")
             f.write(l.get("Fecha de factura") + "\t")

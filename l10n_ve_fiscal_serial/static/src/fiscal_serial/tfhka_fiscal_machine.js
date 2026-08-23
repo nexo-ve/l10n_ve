@@ -401,7 +401,7 @@ export class TfhkaFiscalMachine {
             vat: String(partner.vat || partner.rif || "").trim(),
             name: String(partner.name || partner.display_name || "").trim(),
             address: String(partner.address || partner.street || "").trim(),
-            phone: String(partner.phone || partner.mobile || "").trim(),
+            phone: String(partner.phone || "").trim(),
         };
     }
 

@@ -10,7 +10,6 @@
                     <field name="company_id" invisible="1" />
                     <field name="currency_id" invisible="1" />
                     <field name="discount_type" invisible="1" />
-                    <field name="tax_ids" invisible="1" />
                     <field
                         name="l10n_ve_discount_mode"
                         widget="radio"

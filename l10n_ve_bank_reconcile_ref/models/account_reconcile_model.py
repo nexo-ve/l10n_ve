@@ -4,7 +4,7 @@
 import re
 
 from odoo import fields, models
-from odoo.osv import expression
+from odoo.fields import Domain
 
 
 class AccountReconcileModel(models.Model):
@@ -204,7 +204,7 @@ class AccountReconcileModel(models.Model):
         )
         if not text_domains:
             return self.env["account.move.line"]
-        domain = expression.AND([base_domain, expression.OR(text_domains)])
+        domain = Domain.AND([base_domain, Domain.OR(text_domains)])
         amls = self.env["account.move.line"].search(domain, limit=200)
         matched = self.env["account.move.line"]
         for aml in amls:

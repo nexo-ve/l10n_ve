@@ -1027,7 +1027,7 @@ class TestTrialBalanceReport(TestAccountReportsCommon):
         """
         Test the analytic accounts groupby
         """
-        self.env.user.groups_id += self.env.ref("analytic.group_analytic_accounting")
+        self.env.user.group_ids += self.env.ref("analytic.group_analytic_accounting")
         self.report.filter_analytic = True
         self.report.filter_analytic_groupby = True
 

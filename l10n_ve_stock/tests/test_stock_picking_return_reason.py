@@ -15,20 +15,19 @@ class TestL10nVeStockReturnTransferReason(TestStockCommon):
     def test_return_incoming_picking_without_transfer_reason(self):
         picking_in = self.PickingObj.create(
             {
-                "picking_type_id": self.picking_type_in,
-                "location_id": self.supplier_location,
-                "location_dest_id": self.stock_location,
+                "picking_type_id": self.picking_type_in.id,
+                "location_id": self.supplier_location.id,
+                "location_dest_id": self.stock_location.id,
             }
         )
         move = self.MoveObj.create(
             {
-                "name": self.productA.name,
                 "product_id": self.productA.id,
                 "product_uom_qty": 5,
                 "product_uom": self.uom_unit.id,
                 "picking_id": picking_in.id,
-                "location_id": self.supplier_location,
-                "location_dest_id": self.stock_location,
+                "location_id": self.supplier_location.id,
+                "location_dest_id": self.stock_location.id,
             }
         )
         picking_in.action_confirm()

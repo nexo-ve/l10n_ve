@@ -49,6 +49,11 @@ class IrUiMenu(models.Model):
         return self._l10n_ve_load_menus_cached(debug)
 
     @api.model
-    @tools.ormcache_context("self._uid", "self.env.company.id", "debug", keys=("lang",))
+    @tools.ormcache(
+        "self.env.uid",
+        "self.env.company.id",
+        "debug",
+        "self.env.context.get('lang')",
+    )
     def _l10n_ve_load_menus_cached(self, debug):
         return super().load_menus.__wrapped__(self, debug)

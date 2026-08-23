@@ -20,13 +20,10 @@ class L10nVeEmissionMedium(models.Model):
     active = fields.Boolean(default=True)
     description = fields.Text(translate=True)
 
-    _sql_constraints = [
-        (
-            "code_uniq",
-            "unique(code)",
-            "El código del medio de emisión debe ser único.",
-        ),
-    ]
+    _code_uniq = models.Constraint(
+        'unique(code)',
+        "El código del medio de emisión debe ser único.",
+    )
 
     def _l10n_ve_emission_medium_is_readonly(self):
         return not self.env.su

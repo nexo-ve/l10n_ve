@@ -46,7 +46,7 @@ class SaleOrderLine(models.Model):
         for line in self:
             if not line._l10n_ve_is_split_discount_line():
                 continue
-            rounding = line.product_uom.rounding
+            rounding = line.product_uom_id.rounding
             if float_is_zero(line.qty_to_invoice, precision_rounding=rounding):
                 continue
             if float_is_zero(line.product_uom_qty, precision_rounding=rounding):
@@ -206,7 +206,7 @@ class SaleOrderLine(models.Model):
                     % {"line": line.name or _("Sin nombre"), "price": price}
                 )
 
-    @api.constrains("tax_id", "order_id")
+    @api.constrains("tax_ids", "order_id")
     def _check_tax_single_required_ve(self):
         for line in self:
             if line.display_type:
@@ -215,7 +215,7 @@ class SaleOrderLine(models.Model):
                 continue
             if line.order_id.country_code != "VE":
                 continue
-            if len(line.tax_id) == 0:
+            if len(line.tax_ids) == 0:
                 raise ValidationError(
                     _(
                         "No se puede quitar el impuesto de la línea '%s' en un pedido "
@@ -223,8 +223,8 @@ class SaleOrderLine(models.Model):
                     )
                     % (line.name or _("Sin nombre"))
                 )
-            if len(line.tax_id) > 1:
-                tax_mapped = ", ".join(line.tax_id.mapped("name"))
+            if len(line.tax_ids) > 1:
+                tax_mapped = ", ".join(line.tax_ids.mapped("name"))
                 raise ValidationError(
                     _(
                         "No se puede asignar más de un impuesto a la línea '%s' en un "

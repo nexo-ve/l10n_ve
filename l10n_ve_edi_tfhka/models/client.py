@@ -2,6 +2,7 @@ import json
 import logging
 
 import requests
+
 from odoo import api, models
 from odoo.exceptions import UserError
 

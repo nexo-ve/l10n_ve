@@ -7,8 +7,17 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.misc import format_date
 
-from odoo.addons.account.models.exceptions import TaxClosingNonPostedDependingMovesError
 from odoo.addons.web.controllers.utils import clean_action
+
+
+class TaxClosingNonPostedDependingMovesError(Exception):
+    """Raised during tax closing when depending closing moves are not posted.
+
+    Odoo 19 removed the core ``account.models.exceptions`` module (previously
+    provided by the enterprise tax-closing flow). This exception is raised and
+    handled entirely within this module, so it is defined locally. Its single
+    argument is the client action dict pointing to the depending moves.
+    """
 
 
 class AccountMove(models.Model):

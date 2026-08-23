@@ -1,7 +1,8 @@
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
-import logging
 _logger = logging.getLogger(__name__)
 
 CUSTOMER_INVOICE_TYPES = ("out_invoice", "out_refund")

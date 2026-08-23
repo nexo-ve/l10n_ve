@@ -186,7 +186,7 @@ class IrActionsReport(models.Model):
         self._l10n_ve_mark_ve_invoice_printed(moves)
         moves.invalidate_recordset(["l10n_ve_invoice_original_printed"])
         for move in moves:
-            faithful_pdf, _report_type = super(IrActionsReport, self)._render_qweb_pdf(
+            faithful_pdf, _report_type = super()._render_qweb_pdf(
                 report_ref, res_ids=[move.id], data=data
             )
             move._l10n_ve_attach_invoice_pdf_report(faithful_pdf)

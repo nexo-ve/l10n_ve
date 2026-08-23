@@ -134,7 +134,7 @@ class StockPicking(models.Model):
                 picking.l10n_ve_dispatch_guide_time = False
                 picking.l10n_ve_dispatch_guide_user_id = False
 
-    @api.depends("partner_id", "partner_id.phone", "partner_id.mobile")
+    @api.depends("partner_id", "partner_id.phone")
     def _compute_l10n_ve_partner_contact_phone_display(self):
         for picking in self:
             p = picking.partner_id
@@ -142,7 +142,7 @@ class StockPicking(models.Model):
                 picking.l10n_ve_partner_contact_phone_display = False
             else:
                 picking.l10n_ve_partner_contact_phone_display = (
-                    p.phone or p.mobile or False
+                    p.phone or False
                 )
 
     def _l10n_ve_requires_internal_transfer_reason(self):
@@ -376,7 +376,7 @@ class StockPicking(models.Model):
         p = self.partner_id
         if not p:
             return ""
-        return p.phone or p.mobile or ""
+        return p.phone or ""
 
     def _l10n_ve_dispatch_fleet_vehicle_model_name(self):
         self.ensure_one()
@@ -529,7 +529,7 @@ class StockPicking(models.Model):
         saw_product = False
         per_soline_qty = defaultdict(float)
         for move in self.move_ids:
-            if move.scrapped or not move.product_id or move.product_id.type == "service":
+            if move.scrap_id or not move.product_id or move.product_id.type == "service":
                 continue
             qty_uom = move.quantity if move.state == "done" else move.product_uom_qty
             if float_is_zero(qty_uom, precision_rounding=move.product_uom.rounding):
@@ -540,7 +540,7 @@ class StockPicking(models.Model):
             sol = move.sale_line_id
             per_soline_qty[sol] += move.product_uom._compute_quantity(
                 qty_uom,
-                sol.product_uom,
+                sol.product_uom_id,
                 round=False,
             )
 
@@ -555,7 +555,7 @@ class StockPicking(models.Model):
             if float_compare(
                 sol.qty_invoiced_posted,
                 threshold,
-                precision_rounding=sol.product_uom.rounding,
+                precision_rounding=sol.product_uom_id.rounding,
             ) < 0:
                 return False
         return True

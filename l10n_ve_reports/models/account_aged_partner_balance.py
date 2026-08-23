@@ -1,9 +1,9 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import datetime
+import logging
 from itertools import chain
 
-import logging
 _logger = logging.getLogger(__name__)
 
 from dateutil.relativedelta import relativedelta
@@ -400,8 +400,8 @@ class AgedPartnerBalanceCustomHandler(models.AbstractModel):
             tail_query=tail_query,
         )
 
-        self._cr.execute(query)
-        query_res_lines = self._cr.dictfetchall()
+        self.env.cr.execute(query)
+        query_res_lines = self.env.cr.dictfetchall()
 
         if not current_groupby:
             return build_result_dict(report, query_res_lines)

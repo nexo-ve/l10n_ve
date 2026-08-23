@@ -26,8 +26,8 @@ class AccountChartTemplate(models.AbstractModel):
                 "account_fiscal_country_id": "base.ve",
                 "cash_account_code_prefix": "1101",
                 "bank_account_code_prefix": "1102",
-                "income_currency_exchange_account_id": "account_account_4102004",  # noqa: E501
-                "expense_currency_exchange_account_id": "account_account_5102014",  # noqa: E501
+                "income_currency_exchange_account_id": "account_account_4102004",
+                "expense_currency_exchange_account_id": "account_account_5102014",
                 "tax_calculation_rounding_method": "round_globally",
                 "account_sale_tax_id": "tax1sale",
                 "account_purchase_tax_id": "tax1purchase",
@@ -53,8 +53,8 @@ class AccountChartTemplate(models.AbstractModel):
                 "account_fiscal_country_id": "base.ve",
                 "cash_account_code_prefix": "1101",
                 "bank_account_code_prefix": "1102",
-                "income_currency_exchange_account_id": "account_account_4102004",  # noqa: E501
-                "expense_currency_exchange_account_id": "account_account_5102014",  # noqa: E501
+                "income_currency_exchange_account_id": "account_account_4102004",
+                "expense_currency_exchange_account_id": "account_account_5102014",
                 "tax_calculation_rounding_method": "round_globally",
                 "account_sale_tax_id": "tax1sale",
                 "account_purchase_tax_id": "tax1purchase",

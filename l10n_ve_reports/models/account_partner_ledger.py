@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.osv import expression
+from odoo.fields import Domain
 from odoo.tools import SQL
 
 
@@ -128,7 +128,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
 
         prefix_domain = [("partner_id.name", "=ilike", f"{matched_prefix}%")]
         if self._get_no_partner_line_label().upper().startswith(matched_prefix):
-            prefix_domain = expression.OR([prefix_domain, [("partner_id", "=", None)]])
+            prefix_domain = Domain.OR([prefix_domain, [("partner_id", "=", None)]])
 
         expand_options = {
             **options,
@@ -284,7 +284,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
             partner_ids_to_expand += (
                 self.env["res.partner"]
                 .with_context(active_test=False)
-                .search(expression.OR(partner_prefix_domains))
+                .search(Domain.OR(partner_prefix_domains))
                 .ids
             )
 
@@ -306,9 +306,9 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
         partners = options.get("partner_ids", [])
         if not partners:
             report = self.env["account.report"].browse(options["report_id"])
-            self._cr.execute(self._get_query_sums(report, options))
+            self.env.cr.execute(self._get_query_sums(report, options))
             partners = [
-                row["groupby"] for row in self._cr.dictfetchall() if row["groupby"]
+                row["groupby"] for row in self.env.cr.dictfetchall() if row["groupby"]
             ]
         return self.env["res.partner"].browse(partners)
 
@@ -378,21 +378,21 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
 
         groupby_partners = {}
 
-        self._cr.execute(query)
-        for res in self._cr.dictfetchall():
+        self.env.cr.execute(query)
+        for res in self.env.cr.dictfetchall():
             assign_sum(res)
 
         # Correct the sums per partner, for the lines without partner reconciled with a line having a partner
         query = self._get_sums_without_partner(options)
 
-        self._cr.execute(query)
+        self.env.cr.execute(query)
         totals = {}
         for total_field in ["debit", "credit", "amount", "balance"]:
             totals[total_field] = {
                 col_group_key: 0 for col_group_key in options["column_groups"]
             }
 
-        for row in self._cr.dictfetchall():
+        for row in self.env.cr.dictfetchall():
             totals["debit"][row["column_group_key"]] += row["debit"]
             totals["credit"][row["column_group_key"]] += row["credit"]
             totals["amount"][row["column_group_key"]] += row["amount"]
@@ -437,7 +437,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
             partners = []
 
         # Add 'Partner Unknown' if needed
-        if None in groupby_partners.keys():
+        if None in groupby_partners:
             partners = [p for p in partners] + [None]
 
         return [
@@ -472,7 +472,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
                         SUM(%(credit_select)s)                  AS credit,
                         SUM(%(balance_select)s)                 AS amount,
                         SUM(%(balance_select)s)                 AS balance,
-                        BOOL_AND(account_move_line.reconciled)  AS all_reconciled,
+                        BOOL_Domain.AND(account_move_line.reconciled)  AS all_reconciled,
                         MAX(account_move_line.date)             AS latest_date
                     FROM %(table_references)s
                     %(currency_table_join)s
@@ -554,7 +554,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
                 )
             )
 
-        self._cr.execute(SQL(" UNION ALL ").join(queries))
+        self.env.cr.execute(SQL(" UNION ALL ").join(queries))
 
         init_balance_by_col_group = {
             partner_id: {
@@ -562,7 +562,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
             }
             for partner_id in partner_ids
         }
-        for result in self._cr.dictfetchall():
+        for result in self.env.cr.dictfetchall():
             init_balance_by_col_group[result["partner_id"]][
                 result["column_group_key"]
             ] = result
@@ -828,7 +828,6 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
             )
 
             # For the move lines directly linked to this partner
-            # ruff: noqa: FURB113
             queries.append(
                 SQL(
                     """
@@ -976,8 +975,8 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
         if limit:
             query = SQL("%s LIMIT %s ", query, limit)
 
-        self._cr.execute(query)
-        for aml_result in self._cr.dictfetchall():
+        self.env.cr.execute(query)
+        for aml_result in self.env.cr.dictfetchall():
             if aml_result["key"] == "indirectly_linked_aml":
                 # Append the line to the partner found through the reconciliation.
                 if aml_result["partner_id"] in rslt:

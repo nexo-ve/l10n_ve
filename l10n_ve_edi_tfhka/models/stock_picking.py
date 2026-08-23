@@ -521,7 +521,7 @@ class StockPicking(models.Model):
         self.ensure_one()
         buyer = self._l10n_ve_edi_get_buyer_partner()
         buyer_prefix, buyer_number = self._l10n_ve_edi_get_buyer_identification()
-        phone = buyer.mobile or buyer.phone or ""
+        phone = buyer.phone or ""
         email_list = [buyer.email] if buyer.email else []
         phone_list = [phone] if phone else []
         if email_list and not phone_list:

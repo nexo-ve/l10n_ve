@@ -4,7 +4,7 @@
         <!-- Art. 13 num. 9-11 PA SNAT/2011/0071: alícuota de venta por producto. -->
         <field name="name">product.template.list.l10n.ve.sale.tax</field>
         <field name="model">product.template</field>
-        <field name="inherit_id" ref="account.product_template_view_tree" />
+        <field name="inherit_id" ref="account.product_template_list_view_sellable_inherit" />
         <field name="arch" type="xml">
             <field name="taxes_id" position="before">
                 <field name="l10n_ve_sale_tax_id" optional="show" />
@@ -12,6 +12,14 @@
             <field name="taxes_id" position="attributes">
                 <attribute name="column_invisible">1</attribute>
             </field>
+        </field>
+    </record>
+    <record id="product_template_tree_l10n_ve_purchase_tax" model="ir.ui.view">
+        <!-- Art. 13 num. 9-11 PA SNAT/2011/0071: alícuota de compra por producto. -->
+        <field name="name">product.template.list.l10n.ve.purchase.tax</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="account.product_template_list_view_purchasable_inherit" />
+        <field name="arch" type="xml">
             <field name="supplier_taxes_id" position="before">
                 <field name="l10n_ve_purchase_tax_id" optional="show" />
             </field>

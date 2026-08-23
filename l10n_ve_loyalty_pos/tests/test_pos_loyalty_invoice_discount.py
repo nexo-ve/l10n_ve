@@ -2,6 +2,7 @@
 
 from odoo import fields
 from odoo.tests import tagged
+
 from odoo.addons.l10n_ve_seniat.tests.common import L10nVeSeniatCommon
 
 

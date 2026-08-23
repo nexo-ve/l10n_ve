@@ -1,9 +1,10 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from lxml import etree
+
 from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import tagged
-from lxml import etree
 
 from .test_stock_picking_dispatch_guide import TestL10nVeStockDispatchGuide
 
@@ -82,7 +83,11 @@ class TestL10nVeStockPickingReports(TestL10nVeStockDispatchGuide):
         picking.move_ids.quantity = picking.move_ids.product_uom_qty
         picking.move_ids.picked = True
         picking.button_validate()
-        action = picking.do_print_picking()
+        # Odoo 19: ir.actions.report.report_action() returns the external report
+        # layout configurator wizard (no report_name) when the admin user runs it
+        # and the company has no external_report_layout_id. discard_logo_check
+        # skips that branch so the underlying report action is returned directly.
+        action = picking.with_context(discard_logo_check=True).do_print_picking()
         self.assertEqual(action.get("report_name"), "stock.report_picking")
 
     def test_delivery_report_does_not_duplicate_recipient_data(self):

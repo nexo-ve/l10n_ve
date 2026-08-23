@@ -3,9 +3,9 @@ from odoo.exceptions import UserError
 from odoo.tests import tagged
 
 from odoo.addons.l10n_ve_invoice_escp.report.invoice_escp import (
-    build_move_escp_bytes,
     _l10n_ve_escp_invoice_margin_lines,
     _l10n_ve_max_product_table_lines,
+    build_move_escp_bytes,
 )
 from odoo.addons.l10n_ve_seniat.tests.common import L10nVeSeniatCommon
 

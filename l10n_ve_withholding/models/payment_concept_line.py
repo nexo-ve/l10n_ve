@@ -5,9 +5,10 @@ class PaymentConceptLine(models.Model):
     _name = "payment.concept.line"
     _description = "Payment Concept Line"
 
-    _sql_constraints = [
-        ("unique_code", "UNIQUE(code)", "The concept code already exists")
-    ]
+    _unique_code = models.Constraint(
+        'UNIQUE(code)',
+        "The concept code already exists",
+    )
 
     pay_from = fields.Float(
         string="Payments greater than:", compute="_compute_pay_from", store=True

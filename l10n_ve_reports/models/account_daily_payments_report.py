@@ -4,8 +4,9 @@ from collections import defaultdict
 from datetime import timedelta
 
 from odoo import _, fields, models
-from odoo.addons.web.controllers.utils import clean_action
 from odoo.exceptions import UserError
+
+from odoo.addons.web.controllers.utils import clean_action
 
 
 class DailyPaymentsReportCustomHandler(models.AbstractModel):

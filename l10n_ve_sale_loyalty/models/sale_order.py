@@ -1,12 +1,13 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from collections import defaultdict
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_is_zero
 
-from odoo.addons.l10n_ve_loyalty.models import l10n_ve_global_discount as l10n_ve_discount_logic
+from odoo.addons.l10n_ve_loyalty.models import (
+    l10n_ve_global_discount as l10n_ve_discount_logic,
+)
 
 
 class SaleOrder(models.Model):

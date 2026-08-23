@@ -60,8 +60,7 @@ class ResPartner(models.Model):
     @api.model
     def _l10n_ve_vat_seniat_default_type_person_id_for_vat(self, vat):
         v = (vat or "").strip().upper().replace("-", "").replace(" ", "")
-        if v.startswith("VE"):
-            v = v[2:]
+        v = v.removeprefix("VE")
         if not v:
             return False
         first = v[0].upper()
@@ -83,8 +82,7 @@ class ResPartner(models.Model):
         if not vat:
             raise UserError(_("Indique el NIF/RIF en el contacto antes de consultar."))
         vat = vat.replace("-", "").replace(" ", "")
-        if vat.startswith("VE"):
-            vat = vat[2:]
+        vat = vat.removeprefix("VE")
         if not re.match(r"^[JGP][0-9]{9}$|^[VE][0-9]{7,9}$", vat):
             raise UserError(
                 _(

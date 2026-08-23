@@ -1,12 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_tax_unit_list_l10n_ve_withholding" model="ir.ui.view">
         <field name="name">view.tax.unit.list.l10n_ve.payment.extension</field>
         <field name="model">tax.unit</field>
         <field name="arch" type="xml">
             <list string="Tax Units">
-                <field name="name" />
-                <field name="value" />
-                <field name="status" widget="boolean_toggle" />
+                <field name="name"/>
+                <field name="value"/>
+                <field name="status" widget="boolean_toggle"/>
             </list>
         </field>
     </record>
@@ -19,11 +20,11 @@
                 <sheet string="Tax unit">
                     <group>
                         <group>
-                            <field name="name" />
-                            <field name="value" />
+                            <field name="name"/>
+                            <field name="value"/>
                         </group>
                         <group>
-                            <field name="status" widget="boolean_toggle" />
+                            <field name="status" widget="boolean_toggle"/>
                         </group>
                     </group>
                 </sheet>
@@ -36,21 +37,13 @@
         <field name="model">tax.unit</field>
         <field name="arch" type="xml">
             <search string="Tax unit">
-                <field name="name" />
-                <field name="value" />
-                <filter name="active" domain="[('status','=',True)]" string="Active" />
-                <filter
-                    name="inactive"
-                    domain="[('status','=',False)]"
-                    string="Inactive"
-                />
-                <separator />
-                <group expand="0" string="Group By">
-                    <filter
-                        name="group_by_status"
-                        context="{'group_by': 'status'}"
-                        string="Status"
-                    />
+                <field name="name"/>
+                <field name="value"/>
+                <filter name="active" domain="[('status','=',True)]" string="Active"/>
+                <filter name="inactive" domain="[('status','=',False)]" string="Inactive"/>
+                <separator/>
+                <group>
+                    <filter name="group_by_status" context="{'group_by': 'status'}" string="Status"/>
                 </group>
             </search>
         </field>

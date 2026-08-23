@@ -441,7 +441,7 @@ class AccountMove(models.Model):
             "name": partner.name or "",
             "vat": partner.vat or "",
             "address": partner.street or "",
-            "phone": partner.phone or partner.mobile or "",
+            "phone": partner.phone or "",
         }
 
     def _l10n_ve_fiscal_serial_base_payload(self):

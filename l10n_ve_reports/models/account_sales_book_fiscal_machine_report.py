@@ -1108,15 +1108,7 @@ class SalesBookFiscalMachineReportCustomHandler(models.AbstractModel):
                         options=options,
                     )
                 )
-            elif col_expr_label == "date_retention":
-                line_columns.append(
-                    report._build_column_dict(
-                        "",
-                        column,
-                        options=options,
-                    )
-                )
-            elif col_expr_label == "number_retention":
+            elif col_expr_label == "date_retention" or col_expr_label == "number_retention":
                 line_columns.append(
                     report._build_column_dict(
                         "",

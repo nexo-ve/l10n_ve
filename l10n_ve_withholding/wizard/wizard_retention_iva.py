@@ -32,7 +32,7 @@ class TxtWizard(models.TransientModel):
         if retention_count == 0:
             raise UserError(_("No retentions found for the selected period"))
 
-        url = f"/web/binary/download_retention_iva_txt?&date_start={self.date_start}&date_end={self.date_end}&company_id={str(company_id)}"  # noqa: E501
+        url = f"/web/binary/download_retention_iva_txt?&date_start={self.date_start}&date_end={self.date_end}&company_id={company_id!s}"  # noqa: E501
         return {"type": "ir.actions.act_url", "url": url, "target": "self"}
 
     def _retention_iva(self, retentions):

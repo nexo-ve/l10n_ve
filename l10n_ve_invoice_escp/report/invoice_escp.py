@@ -358,7 +358,7 @@ def _format_product_row(env, line, item, layout, doc_currency, comp_currency, de
             layout["w_sbs"],
         )
         parts = [
-            f"{str(item):<{layout['w_hash']}}",
+            f"{item!s:<{layout['w_hash']}}",
             _pad_code(code, layout["w_code"]),
             dcell,
             _pad_right(tax_s, layout["w_tax"]),
@@ -369,7 +369,7 @@ def _format_product_row(env, line, item, layout, doc_currency, comp_currency, de
         ]
     else:
         parts = [
-            f"{str(item):<{layout['w_hash']}}",
+            f"{item!s:<{layout['w_hash']}}",
             _pad_code(code, layout["w_code"]),
             dcell,
             _pad_right(tax_s, layout["w_tax"]),

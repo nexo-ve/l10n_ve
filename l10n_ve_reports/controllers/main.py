@@ -66,7 +66,7 @@ class AccountReportController(http.Controller):
                 "arguments": [e.errors, e.content],
             }
             raise InternalServerError(response=self._generate_response(data)) from e
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             data = http.serialize_exception(e)
             raise InternalServerError(response=self._generate_response(data)) from e
 

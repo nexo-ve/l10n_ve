@@ -79,7 +79,7 @@ class AccountReportSend(models.TransientModel):
         # EXTENDS 'base'
         results = super().default_get(fields_list)
 
-        context_options = self._context.get("default_report_options", {})
+        context_options = self.env.context.get("default_report_options", {})
         if "account_report_id" in fields_list and "account_report_id" not in results:
             report_id = context_options.get("report_id", False)
             results["account_report_id"] = report_id

@@ -89,7 +89,7 @@
                 </group>
             </xpath>
             <xpath
-                expr="//field[@name='move_ids_without_package']/list/field[@name='quantity']"
+                expr="//field[@name='move_ids']/list/field[@name='quantity']"
                 position="after"
             >
                 <field name="l10n_ve_dispatch_currency_id" column_invisible="1" />

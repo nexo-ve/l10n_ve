@@ -47,7 +47,7 @@ class MunicipalRetentionXlsxReport(models.TransientModel):
             )
         return {
             "type": "ir.actions.act_url",
-            "url": f"/web/get_xlsx_municipal_retentions_report?report_id={self.id}",  # noqa: E501
+            "url": f"/web/get_xlsx_municipal_retentions_report?report_id={self.id}",
             "target": "self",
         }
 

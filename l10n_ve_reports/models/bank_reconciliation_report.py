@@ -22,10 +22,10 @@ class BankReconciliationReportCustomHandler(models.AbstractModel):
         options["ignore_totals_below_sections"] = True
         options["no_xlsx_currency_code_columns"] = True
         if (
-            "active_id" in self._context
-            and self._context.get("active_model") == "account.journal"
+            "active_id" in self.env.context
+            and self.env.context.get("active_model") == "account.journal"
         ):
-            options["bank_reconciliation_report_journal_id"] = self._context[
+            options["bank_reconciliation_report_journal_id"] = self.env.context[
                 "active_id"
             ]
         elif "bank_reconciliation_report_journal_id" in previous_options:
@@ -244,8 +244,8 @@ class BankReconciliationReportCustomHandler(models.AbstractModel):
             else SQL(),
         )
 
-        self._cr.execute(query_sql)
-        query_res_lines = self._cr.fetchall()
+        self.env.cr.execute(query_sql)
+        query_res_lines = self.env.cr.fetchall()
 
         if not current_groupby:
             return self._build_custom_engine_result(
@@ -475,8 +475,8 @@ class BankReconciliationReportCustomHandler(models.AbstractModel):
             ),  # Same key in the groupby because we can't put a null key in a group by
         )
 
-        self._cr.execute(query)
-        query_res_lines = self._cr.dictfetchall()
+        self.env.cr.execute(query)
+        query_res_lines = self.env.cr.dictfetchall()
 
         return self._compute_result(query_res_lines, current_groupby, build_result_dict)
 
@@ -628,8 +628,8 @@ class BankReconciliationReportCustomHandler(models.AbstractModel):
                 "account_move_line.account_id"
             ),  # Same key in the groupby because we can't put a null key in a group by
         )
-        self._cr.execute(query)
-        query_res_lines = self._cr.dictfetchall()
+        self.env.cr.execute(query)
+        query_res_lines = self.env.cr.dictfetchall()
 
         return self._compute_result(query_res_lines, current_groupby, build_result_dict)
 

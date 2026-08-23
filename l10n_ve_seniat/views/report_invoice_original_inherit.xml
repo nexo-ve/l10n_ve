@@ -183,7 +183,7 @@
             </t>
         </xpath>
         <xpath
-            expr="//div[@name='invoice_date']/t[@t-if=&quot;o.move_type == 'out_invoice'&quot;]/strong"
+            expr="//div[@name='invoice_date']/t[@t-elif=&quot;o.move_type == 'out_invoice'&quot;]/strong"
             position="attributes"
         >
             <attribute

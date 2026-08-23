@@ -75,7 +75,7 @@
                 <attribute name="invisible">not id or state != 'draft' or move_type == 'entry' or (country_code == 'VE' and move_type in ('out_invoice', 'out_refund', 'out_receipt'))</attribute>
             </xpath>
 
-            <xpath expr="//field[@name='tax_lock_date_message']/parent::div" position="after">
+            <xpath expr="//div[@id='alerts']" position="after">
                 <!-- Art. 22-24 PA SNAT/2011/0071: NC por ND adicional sin revertir. -->
                 <div
                     class="alert alert-warning d-flex align-items-center flex-wrap gap-2"

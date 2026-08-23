@@ -18,7 +18,7 @@
         <field name="password" />
         <field name="active" eval="True" />
         <field
-            name="groups_id"
+            name="group_ids"
             eval="[
                 Command.set([
                     ref('base.group_user'),

@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 /.venv
+/.venv-migrator
 /.pytest_cache
 /.ruff_cache
 

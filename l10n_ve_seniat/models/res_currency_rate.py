@@ -6,7 +6,6 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.float_utils import float_compare
 
-
 _L10N_VE_INVOICE_MOVE_TYPES = (
     "out_invoice",
     "out_refund",

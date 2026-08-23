@@ -25,7 +25,7 @@ class TestSaleOrderGlobalDiscount(L10nVeSeniatCommon):
             raise_if_not_found=False,
         )
         if discount_group:
-            cls.env.user.groups_id = [(4, discount_group.id)]
+            cls.env.user.group_ids = [(4, discount_group.id)]
 
     def _create_ve_product(self, name, price):
         tmpl = self.env["product.template"].create(
@@ -38,6 +38,12 @@ class TestSaleOrderGlobalDiscount(L10nVeSeniatCommon):
                 "supplier_taxes_id": [
                     (6, 0, [self.company_data["default_tax_purchase"].id])
                 ],
+                "property_account_income_id": self.company_data[
+                    "default_account_revenue"
+                ].id,
+                "property_account_expense_id": self.company_data[
+                    "default_account_expense"
+                ].id,
             }
         )
         return tmpl.product_variant_ids[0]

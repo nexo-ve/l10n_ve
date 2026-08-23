@@ -243,9 +243,7 @@ class AccountPaymentRegister(models.TransientModel):
                     "reconcile",
                 ):
                     wizard.payment_difference_handling = "advance"
-            elif wizard.payment_difference_handling == "advance":
-                wizard.payment_difference_handling = "open"
-            elif wizard.payment_difference_handling not in ("open", "reconcile"):
+            elif wizard.payment_difference_handling == "advance" or wizard.payment_difference_handling not in ("open", "reconcile"):
                 wizard.payment_difference_handling = "open"
 
     def _uses_advance_payment_difference_handling(self):

@@ -17,12 +17,14 @@ class TestL10nVeStockProductFiscalLocks(L10nVeSeniatCommon):
             cls.env,
             login="ve_stock_fiscal_locked",
             groups="base.group_user,stock.group_stock_manager,"
+            "product.group_product_manager,"
             "sales_team.group_sale_salesman,account.group_account_invoice",
         )
         cls.unlocked_user = new_test_user(
             cls.env,
             login="ve_stock_fiscal_unlock",
             groups="base.group_user,stock.group_stock_manager,"
+            "product.group_product_manager,"
             "l10n_ve_seniat.group_l10n_ve_override_locked_master_data",
         )
 
@@ -83,7 +85,6 @@ class TestL10nVeStockProductFiscalLocks(L10nVeSeniatCommon):
         )
         move = self.env["stock.move"].create(
             {
-                "name": product.name,
                 "product_id": product.id,
                 "product_uom_qty": 1,
                 "product_uom": product.uom_id.id,

@@ -9,7 +9,11 @@ import requests
 from lxml import html
 from PIL import Image, ImageFilter, ImageOps
 
-from .seniat_field_mapper import enrich_from_key_values, extract_table_key_values, rif_from_seniat_text
+from .seniat_field_mapper import (
+    enrich_from_key_values,
+    extract_table_key_values,
+    rif_from_seniat_text,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -392,7 +396,7 @@ def _html_plain_compact(tree):
 
 
 def _regex_label_value(plain, label_pattern):
-    m = re.search(label_pattern, plain, re.I)
+    m = re.search(label_pattern, plain, re.IGNORECASE)
     if not m:
         return ""
     return re.sub(r"\s+", " ", m.group(1)).strip()
@@ -429,14 +433,14 @@ def parse_buscarif_page(html_text):
     rif_token = rif_from_seniat_text(head, third, plain)
     if not rif_token and head:
         head_token = head.split(" ", 1)[0].strip()
-        head_token = re.sub(r"[^JGPVE0-9]", "", head_token, flags=re.I)
-        if re.match(r"^[JGPVE]\d{9}$", head_token, re.I):
+        head_token = re.sub(r"[^JGPVE0-9]", "", head_token, flags=re.IGNORECASE)
+        if re.match(r"^[JGPVE]\d{9}$", head_token, re.IGNORECASE):
             rif_token = head_token.upper()
 
     nombre_full = head
     if rif_token:
         nombre_full = re.sub(
-            re.escape(rif_token), "", nombre_full, count=1, flags=re.I
+            re.escape(rif_token), "", nombre_full, count=1, flags=re.IGNORECASE
         )
     nombre_full = re.sub(r"^[\s_\-]+", "", nombre_full)
 

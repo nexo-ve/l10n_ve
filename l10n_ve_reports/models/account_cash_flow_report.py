@@ -271,7 +271,7 @@ class CashFlowReportCustomHandler(models.AbstractModel):
         )
         where_params = [tuple(selected_journal_ids)] if selected_journal_ids else []
 
-        self._cr.execute(
+        self.env.cr.execute(
             f"""
             SELECT
                 array_remove(ARRAY_AGG(DISTINCT account_account.id), NULL),
@@ -289,7 +289,7 @@ class CashFlowReportCustomHandler(models.AbstractModel):
             where_params,
         )
 
-        res = self._cr.fetchall()[0]
+        res = self.env.cr.fetchall()[0]
         payment_account_ids = set((res[0] or []) + (res[1] or []))
 
         if not payment_account_ids:
@@ -384,9 +384,9 @@ class CashFlowReportCustomHandler(models.AbstractModel):
                 )
             )
 
-        self._cr.execute(SQL(" UNION ALL ").join(queries))
+        self.env.cr.execute(SQL(" UNION ALL ").join(queries))
 
-        return self._cr.dictfetchall()
+        return self.env.cr.dictfetchall()
 
     def _get_liquidity_moves(
         self, report, options, payment_account_ids, cash_flow_tag_ids
@@ -516,9 +516,9 @@ class CashFlowReportCustomHandler(models.AbstractModel):
                 )
             )
 
-        self._cr.execute(SQL(" UNION ALL ").join(queries))
+        self.env.cr.execute(SQL(" UNION ALL ").join(queries))
 
-        for aml_data in self._cr.dictfetchall():
+        for aml_data in self.env.cr.dictfetchall():
             reconciled_aml_groupby_account.setdefault(aml_data["account_id"], {})
             reconciled_aml_groupby_account[aml_data["account_id"]].setdefault(
                 aml_data["column_group_key"],
@@ -627,9 +627,9 @@ class CashFlowReportCustomHandler(models.AbstractModel):
                 )
             )
 
-        self._cr.execute(SQL(" UNION ALL ").join(queries))
+        self.env.cr.execute(SQL(" UNION ALL ").join(queries))
 
-        for aml_data in self._cr.dictfetchall():
+        for aml_data in self.env.cr.dictfetchall():
             reconciled_percentage_per_move[aml_data["column_group_key"]].setdefault(
                 aml_data["move_id"], {}
             )
@@ -684,9 +684,9 @@ class CashFlowReportCustomHandler(models.AbstractModel):
                 )
             )
 
-        self._cr.execute(SQL(" UNION ALL ").join(queries))
+        self.env.cr.execute(SQL(" UNION ALL ").join(queries))
 
-        for aml_data in self._cr.dictfetchall():
+        for aml_data in self.env.cr.dictfetchall():
             if (
                 aml_data["account_id"]
                 in reconciled_percentage_per_move[aml_data["column_group_key"]][
@@ -755,9 +755,9 @@ class CashFlowReportCustomHandler(models.AbstractModel):
                 )
             )
 
-        self._cr.execute(SQL(" UNION ALL ").join(queries))
+        self.env.cr.execute(SQL(" UNION ALL ").join(queries))
 
-        for aml_data in self._cr.dictfetchall():
+        for aml_data in self.env.cr.dictfetchall():
             aml_column_group_key = aml_data["column_group_key"]
             aml_move_id = aml_data["move_id"]
             aml_account_id = aml_data["account_id"]

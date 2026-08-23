@@ -42,9 +42,7 @@ def enrich_from_key_values(parsed, kv):
             parsed["seniat_tipo_contribuyente_label"] = value
         elif "tipo" in label and "persona" in label:
             parsed["seniat_tipo_persona_label"] = value
-        elif "%" in label and "retencion" in label.replace("ó", "o"):
-            parsed["seniat_retencion_pct_label"] = value
-        elif "retencion" in label.replace("ó", "o") and "%" in value:
+        elif "%" in label and "retencion" in label.replace("ó", "o") or "retencion" in label.replace("ó", "o") and "%" in value:
             parsed["seniat_retencion_pct_label"] = value
     parsed["seniat_table_kv"] = kv
     return parsed
@@ -52,10 +50,10 @@ def enrich_from_key_values(parsed, kv):
 
 def rif_from_seniat_text(*chunks):
     blob = " ".join(c for c in chunks if c)
-    m = re.search(r"\b([JGPVE]\d{9})\b", blob, re.I)
+    m = re.search(r"\b([JGPVE]\d{9})\b", blob, re.IGNORECASE)
     if m:
         return m.group(1).upper()
-    m = re.search(r"\b([JGPVE]\s*\d{9})\b", re.sub(r"\s+", "", blob), re.I)
+    m = re.search(r"\b([JGPVE]\s*\d{9})\b", re.sub(r"\s+", "", blob), re.IGNORECASE)
     if m:
         return re.sub(r"\s+", "", m.group(1)).upper()
     return ""
@@ -71,7 +69,7 @@ def extract_retention_percent_from_text(*texts):
         r"(\d+)\s*%\s*del\s+impuesto\s+causado",
         r"(\d+)\s*%\s*del\s+impuesto",
     ):
-        m = re.search(pat, blob, re.I)
+        m = re.search(pat, blob, re.IGNORECASE)
         if m:
             val = int(m.group(1))
             if val in (75, 100):

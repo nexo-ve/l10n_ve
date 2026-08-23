@@ -439,7 +439,6 @@ class PaymentConcept(models.Model):
                 }
             )
 
-        return
 
     def validate_concept_lines(self, concept_lines):
         existing_codes = self.env["payment.concept.line"].search([]).mapped("code")

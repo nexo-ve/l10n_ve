@@ -5,7 +5,7 @@
         inherit_id="sale.sale_order_portal_template"
         name="VE portal: sidebar sin total en HTML"
     >
-        <xpath expr="//t[@id='sale_order_portal_sidebar']//t[@t-set='title']" position="replace">
+        <xpath expr="//t[@t-set='title']" position="replace">
             <t t-set="title">
                 <h2
                     t-if="sale_order.country_code != 'VE' or report_type != 'html'"
@@ -16,7 +16,7 @@
                 <h2 t-else="" class="mb-0 text-break text-muted" t-out="sale_order.name"/>
             </t>
         </xpath>
-        <xpath expr="//t[@id='sale_order_portal_sidebar']//div[@name='sale_order_advantage']/parent::*" position="attributes">
+        <xpath expr="//div[@name='sale_order_advantage']/parent::*" position="attributes">
             <attribute name="t-if">
                 not sale_order.is_expired and sale_order.state in ['draft', 'sent'] and not (sale_order.country_code == 'VE' and report_type == 'html')
             </attribute>
@@ -71,11 +71,11 @@
         <xpath expr="//th[@id='taxes_header']" position="attributes">
             <attribute name="t-if">sale_order.country_code != 'VE' or report_type != 'html'</attribute>
         </xpath>
-        <xpath expr="//td[@id='taxes']" position="attributes">
-            <attribute name="t-if">sale_order.country_code != 'VE' or report_type != 'html'</attribute>
+        <xpath expr="//td[@name='td_product_taxes']" position="attributes">
+            <attribute name="t-if">display_taxes and (sale_order.country_code != 'VE' or report_type != 'html')</attribute>
         </xpath>
-        <xpath expr="//td[@id='subtotal']" position="replace">
-            <td t-if="not line.is_downpayment" class="text-end" id="subtotal">
+        <xpath expr="//td[@name='td_product_subtotal']" position="replace">
+            <td t-if="not line.is_downpayment" class="text-end" name="td_product_subtotal">
                 <span
                     t-if="sale_order.country_code == 'VE' and report_type == 'html'"
                     class="oe_order_line_price_subtotal"

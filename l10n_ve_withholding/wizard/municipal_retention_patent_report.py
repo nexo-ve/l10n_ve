@@ -130,10 +130,10 @@ class MunicipalRetentionPatentReport(models.TransientModel):
 
         for line in range(2, col2 + 1):
             worksheet2.write_array_formula(
-                f"C{line}", f"=D{line}/D{str(col2+1)}", money_format
+                f"C{line}", f"=D{line}/D{col2+1!s}", money_format
             )
             worksheet2.write_array_formula(
-                f"F{line}", f"=C{line}*F{str(col2+1)}", money_format
+                f"F{line}", f"=C{line}*F{col2+1!s}", money_format
             )
             worksheet2.write_array_formula(
                 f"H{line}", f"=D{line}-E{line}-F{line}+G{line}", money_format
@@ -189,7 +189,7 @@ class MunicipalRetentionPatentReport(models.TransientModel):
 
             price_subtotal = line.price_subtotal
             ciu = line.ciu_id
-            if (ciu.name, line.product_id.categ_id.name) not in groups.keys():
+            if (ciu.name, line.product_id.categ_id.name) not in groups:
                 groups[ciu.name, line.product_id.categ_id.name] = {
                     "category_name": line.product_id.categ_id.name,
                     "CIU": ciu.name,
@@ -244,7 +244,7 @@ class MunicipalRetentionPatentReport(models.TransientModel):
                 cols.pop(col_name, None)
 
         numero = 1
-        for line in groups.keys():
+        for line in groups:
             rows = OrderedDict()
             rows.update(cols)
             rows["RUBROS"] = groups[line]["category_name"]
