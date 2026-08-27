@@ -56,4 +56,4 @@ class IrUiMenu(models.Model):
         "self.env.context.get('lang')",
     )
     def _l10n_ve_load_menus_cached(self, debug):
-        return super().load_menus.__wrapped__(self, debug)
+        return super().load_menus(debug)

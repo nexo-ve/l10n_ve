@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class EconomicActivity(models.Model):
@@ -28,17 +28,9 @@ class EconomicActivity(models.Model):
     minimum_monthly = fields.Float(string="Monthly Taxable Minimum", required=True)
     minimum_annual = fields.Float(string="Annual Taxable Minimum", required=True)
 
-    def name_get(self):
-        res = []
+    @api.depends("name", "branch_id.name", "municipality_id.name")
+    def _compute_display_name(self):
         for activity in self:
-            res.append(
-                (
-                    activity.id,
-                    activity.name
-                    + " - "
-                    + activity.branch_id.name
-                    + " - "
-                    + activity.municipality_id.name,
-                )
+            activity.display_name = (
+                f"{activity.name} - {activity.branch_id.name} - {activity.municipality_id.name}"
             )
-        return res

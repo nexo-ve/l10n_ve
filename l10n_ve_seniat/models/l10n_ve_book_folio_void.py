@@ -1,6 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class L10nVeBookFolioVoid(models.Model):
@@ -29,11 +29,10 @@ class L10nVeBookFolioVoid(models.Model):
         readonly=True,
     )
 
-    def name_get(self):
-        res = []
+    @api.depends("reason")
+    def _compute_display_name(self):
         for rec in self:
             text = (rec.reason or "").strip().replace("\n", " ")
             if len(text) > 80:
                 text = text[:77] + "…"
-            res.append((rec.id, text or str(rec.id)))
-        return res
+            rec.display_name = text or str(rec.id)

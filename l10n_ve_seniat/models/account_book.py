@@ -689,12 +689,10 @@ class AccountBookSection(models.Model):
             number_next = last_doc.number + 1 if last_doc else section.number_from
             seq.sudo().write({"number_next": number_next})
 
-    def name_get(self):
-        result = []
+    @api.depends("name", "number_from", "number_to")
+    def _compute_display_name(self):
         for sec in self:
-            label = sec.name or f"{sec.number_from:g}-{sec.number_to:g}"
-            result.append((sec.id, label))
-        return result
+            sec.display_name = sec.name or f"{sec.number_from:g}-{sec.number_to:g}"
 
 
 class AccountBookDocument(models.Model):

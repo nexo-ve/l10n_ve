@@ -454,7 +454,7 @@ class TestAccountBook(L10nVeSeniatCommon):
                 "number_to": 30,
             }
         )
-        self.assertEqual(section.name_get()[0][1], "20-30")
+        self.assertEqual(section.display_name, "20-30")
 
     def test_section_write_book_id_recreates_sequence(self):
         book1 = self.env["account.book"].create(
