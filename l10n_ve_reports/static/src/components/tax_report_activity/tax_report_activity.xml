@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="l10n_ve_reports.ActivityListPopoverItem.TaxReport"
+       t-inherit="mail.ActivityListPopoverItem"
+       t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('align-items-center') and hasclass('flex-wrap')]" position="after">
+            <button t-if="isTaxReportActivity"
+                    class="btn btn-link p-0 mt-1 text-start o-mail-ActivityListPopoverItem-taxReport"
+                    t-on-click="onClickOpenTaxActivity">
+                Open tax report
+            </button>
+        </xpath>
+    </t>
+</templates>
