@@ -892,6 +892,14 @@ class AccountReport(models.Model):
             # Default.
             options_filter = default_filter
 
+        # Odoo 19 renamed the tax period date filters of default_opening_date_filter
+        # ('this_tax_period'/'previous_tax_period') to 'this_return_period' and
+        # 'previous_return_period'. The report options keep the historical
+        # 'tax_period' naming internally, both here and in the JS filters, so the
+        # value coming from the field is normalized to it.
+        if isinstance(options_filter, str):
+            options_filter = options_filter.replace("return_period", "tax_period")
+
         # Compute 'date_from' / 'date_to'.
         if not date_from or not date_to:
             if options_filter in ("today", "this_today") or (
@@ -1118,7 +1126,7 @@ class AccountReport(models.Model):
             date_to = date_tmp.strftime("%Y-%m-%d")
             date_from = None
 
-        elif date_scope == "previous_tax_period":
+        elif date_scope in ("previous_tax_period", "previous_return_period"):
             eve_of_date_from = fields.Date.from_string(
                 options["date"]["date_from"]
             ) - relativedelta(days=1)
@@ -1618,7 +1626,7 @@ class AccountReport(models.Model):
 
     def _init_options_fiscal_position(self, options, previous_options):
         if (
-            self.filter_fiscal_position
+            self.allow_foreign_vat
             and self.country_id
             and len(options["companies"]) == 1
         ):
@@ -7420,7 +7428,7 @@ class AccountReport(models.Model):
 
         if self.availability_condition == "country":
             countries = companies.account_fiscal_country_id
-            if self.filter_fiscal_position:
+            if self.allow_foreign_vat:
                 foreign_vat_fpos = self.env["account.fiscal.position"].search(
                     [
                         ("foreign_vat", "!=", False),
@@ -10339,6 +10347,23 @@ class AccountReportExpression(models.Model):
                 ("date", "<=", date_to),
             ],
         }
+
+
+class AccountReportExternalValue(models.Model):
+    _inherit = "account.report.external.value"
+
+    # Odoo 19 dropped this field from account.report.external.value in core
+    # (the fiscal position filtering of report options was reworked into
+    # account.report.allow_foreign_vat). This module still segments carryover
+    # and manual external values per foreign fiscal position, so it declares
+    # the field itself, keeping the Odoo 18 definition.
+    foreign_vat_fiscal_position_id = fields.Many2one(
+        string="Fiscal position",
+        comodel_name="account.fiscal.position",
+        domain="[('country_id', '=', report_country_id), ('foreign_vat', '!=', False)]",
+        check_company=True,
+        help="The foreign fiscal position for which this external value is made.",
+    )
 
 
 class AccountReportHorizontalGroup(models.Model):

@@ -170,7 +170,7 @@ class TestJournalReport(TestAccountReportsCommon):
                 "name": "Tax report",
                 "root_report_id": cls.env.ref("account.generic_tax_report").id,
                 "country_id": cls.company_data["company"].country_id.id,
-                "filter_fiscal_position": True,
+                "allow_foreign_vat": True,
                 "availability_condition": "country",
                 "column_ids": [
                     Command.create(
