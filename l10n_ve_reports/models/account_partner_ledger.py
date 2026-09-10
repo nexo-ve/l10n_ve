@@ -472,7 +472,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
                         SUM(%(credit_select)s)                  AS credit,
                         SUM(%(balance_select)s)                 AS amount,
                         SUM(%(balance_select)s)                 AS balance,
-                        BOOL_Domain.AND(account_move_line.reconciled)  AS all_reconciled,
+                        BOOL_AND(account_move_line.reconciled)        AS all_reconciled,
                         MAX(account_move_line.date)             AS latest_date
                     FROM %(table_references)s
                     %(currency_table_join)s

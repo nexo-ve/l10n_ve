@@ -11,7 +11,7 @@
 Accounting Reports
 ==================
     """,
-    "depends": ["account", "l10n_ve_seniat", "web"],
+    "depends": ["account", "l10n_ve_seniat", "l10n_ve_withholding", "web"],
     "data": [
         "security/ir.model.access.csv",
         "data/pdf_export_templates.xml",

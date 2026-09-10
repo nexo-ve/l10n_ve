@@ -1,6 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models, osv
+from odoo import api, fields, models
 from odoo.tools import SQL, Query
 
 from odoo.addons.web.controllers.utils import clean_action
@@ -286,7 +286,7 @@ class AccountReport(models.AbstractModel):
                 elif field.split(".")[0] not in AccountAnalyticLine._fields:
                     expression = [(f"move_line_id.{field}", operator, right_term)]
                     if options.get("include_analytic_without_aml"):
-                        expression = osv.Domain.OR(
+                        expression = fields.Domain.OR(
                             [
                                 [("move_line_id", "=", False)],
                                 expression,
@@ -310,7 +310,7 @@ class AccountReport(models.AbstractModel):
         domain = super()._get_options_journals_domain(options)
         # Add False to the domain in order to select lines without journals for analytics columns.
         if options.get("include_analytic_without_aml"):
-            domain = osv.Domain.OR(
+            domain = fields.Domain.OR(
                 [
                     domain,
                     [("journal_id", "=", False)],
@@ -324,7 +324,7 @@ class AccountReport(models.AbstractModel):
 
         # Get the analytic accounts that we need to filter on from the options and add a domain for them.
         if "analytic_accounts_list" in options:
-            domain = osv.Domain.AND(
+            domain = fields.Domain.AND(
                 [
                     domain,
                     [
@@ -343,13 +343,32 @@ class AccountReport(models.AbstractModel):
 class AccountMoveLine(models.Model):
     _inherit = "account.move.line"
 
-    def _where_calc(self, domain, active_test=True):
+    def _search(
+        self,
+        domain,
+        offset=0,
+        limit=None,
+        order=None,
+        *,
+        active_test=True,
+        bypass_access=False,
+    ):
         """In case we need an analytic column in an account_report, we shadow the account_move_line table
         with a temp table filled with analytic data, that will be used for the analytic columns.
         We do it in this function to only create and fill it once for all computations of a report.
         The following analytic columns and computations will just query the shadowed table instead of the real one.
+
+        Odoo 19 removed _where_calc, so this hooks into _search, which is now the
+        single extension point building the query.
         """
-        query = super()._where_calc(domain, active_test)
+        query = super()._search(
+            domain,
+            offset,
+            limit,
+            order,
+            active_test=active_test,
+            bypass_access=bypass_access,
+        )
         if self.env.context.get(
             "account_report_analytic_groupby"
         ) and not self.env.context.get("account_report_cash_basis"):

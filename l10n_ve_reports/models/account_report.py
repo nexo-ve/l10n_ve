@@ -18,7 +18,7 @@ import xlsxwriter
 from dateutil.relativedelta import relativedelta
 from PIL import ImageFont
 
-from odoo import _, api, fields, models, osv
+from odoo import _, api, fields, models
 from odoo.exceptions import RedirectWarning, UserError, ValidationError
 from odoo.service.model import get_public_method
 from odoo.tools import (
@@ -620,7 +620,7 @@ class AccountReport(models.Model):
             return []
 
         selected_ir_filters = self.env["ir.filters"].browse(selected_filters_ids)
-        return osv.Domain.OR(
+        return fields.Domain.OR(
             [filter_record._get_eval_domain() for filter_record in selected_ir_filters]
         )
 
@@ -1333,7 +1333,7 @@ class AccountReport(models.Model):
             if opt["selected"]:
                 selected_domains.append(domain)
             all_domains.append(domain)
-        return osv.Domain.OR(selected_domains or all_domains)
+        return fields.Domain.OR(selected_domains or all_domains)
 
     ####################################################
     # OPTIONS: order column
@@ -1726,7 +1726,7 @@ class AccountReport(models.Model):
                 ("move_id.fiscal_position_id.foreign_vat", "=", False),
             ]
             tax_tag_domain = get_foreign_vat_tax_tag_extra_domain()
-            return osv.Domain.OR([domain, tax_tag_domain])
+            return fields.Domain.OR([domain, tax_tag_domain])
 
         if isinstance(fiscal_position_opt, int):
             # It's a fiscal position id
@@ -1735,7 +1735,7 @@ class AccountReport(models.Model):
                 fiscal_position_opt
             )
             tax_tag_domain = get_foreign_vat_tax_tag_extra_domain(fiscal_position)
-            return osv.Domain.OR([domain, tax_tag_domain])
+            return fields.Domain.OR([domain, tax_tag_domain])
 
         # 'all', or option isn't specified
         return []
@@ -2874,7 +2874,10 @@ class AccountReport(models.Model):
 
         self.env["account.move.line"].check_access("read")
 
-        query = self.env["account.move.line"]._where_calc(domain)
+        # Odoo 19 removed _where_calc/_apply_ir_rules; _search builds the same
+        # query and applies the record rules (the 'company_id IN (...)' wrapping
+        # that _apply_ir_rules used to add below) in one go.
+        query = self.env["account.move.line"]._search(domain)
 
         if options.get("compute_budget"):
             self._create_report_budget_temp_table(options)
@@ -2888,9 +2891,6 @@ class AccountReport(models.Model):
                     options["compute_budget"],
                 )
             )
-
-        # Wrap the query with 'company_id IN (...)' to avoid bypassing company access rights.
-        self.env["account.move.line"]._apply_ir_rules(query)
 
         return query
 
@@ -2962,11 +2962,12 @@ class AccountReport(models.Model):
                     "credit": SQL("0"),
                 }
             )
-            accounts_subquery = self.env["account.account"]._where_calc(
+            accounts_subquery = self.env["account.account"]._search(
                 [
                     ("company_ids", "in", self.get_report_company_ids(options)),
                     ("internal_group", "in", ["income", "expense"]),
-                ]
+                ],
+                bypass_access=True,
             )
             self.env.cr.execute(
                 SQL(
@@ -3857,7 +3858,7 @@ class AccountReport(models.Model):
 
         # Check whether there are unposted entries for the selected period and partner or not (if the report allows it)
         if options.get("date") and options.get("all_entries") is not None:
-            domain = osv.Domain.AND(
+            domain = fields.Domain.AND(
                 [
                     self.env["account.move"]._check_company_domain(report_company_ids),
                     [("state", "=", "draft")],
@@ -3865,10 +3866,10 @@ class AccountReport(models.Model):
                 ]
             )
             if options.get("partner_ids"):
-                domain = osv.Domain.AND(
+                domain = fields.Domain.AND(
                     [
                         domain,
-                        osv.Domain.OR(
+                        fields.Domain.OR(
                             [
                                 [("partner_id", "in", options["partner_ids"])],
                                 [("partner_shipping_id", "in", options["partner_ids"])],
@@ -4411,7 +4412,7 @@ class AccountReport(models.Model):
 
             if (
                 expression.engine == "aggregation"
-                and expression.subformula == "cross_report"
+                and (expression.subformula or "").startswith("cross_report")
             ):
                 # Always expand aggregation expressions, in case their subexpressions are not in expressions parameter
                 # (this can happen in cross report, or when auditing an individual aggregation expression)
@@ -4678,7 +4679,7 @@ class AccountReport(models.Model):
                     # group_by are ignored by this engine, so we merge every grouped entry into a common dict
                     forced_date_scope = (
                         date_scope
-                        if expression.subformula == "cross_report"
+                        if (expression.subformula or "").startswith("cross_report")
                         or expression.report_line_id.report_id != self
                         else None
                     )
@@ -5076,7 +5077,9 @@ class AccountReport(models.Model):
             ]
             return round(unbound_value, int(precision_string))
 
-        if subformula not in {"cross_report", "ignore_zero_division"}:
+        if not subformula.startswith("cross_report") and subformula != (
+            "ignore_zero_division"
+        ):
             company_currency = self.env.company.currency_id
             date_to = column_group_options["date"]["date_to"]
 
@@ -5604,9 +5607,11 @@ class AccountReport(models.Model):
 
             if excluded_prefixes_domains:
                 account_domain.append("!")
-                account_domain += osv.Domain.OR(excluded_prefixes_domains)
+                account_domain += fields.Domain.OR(excluded_prefixes_domains)
 
-            prefix_query = self.env["account.account"]._where_calc(account_domain)
+            prefix_query = self.env["account.account"]._search(
+                account_domain, bypass_access=True
+            )
             all_prefixes_queries.append(
                 prefix_query.select(
                     SQL("%s AS prefix", [prefix, *excluded_prefixes]),
@@ -5824,7 +5829,7 @@ class AccountReport(models.Model):
         # Do the computation
         where_clause = (
             self.env["account.report.external.value"]
-            ._where_calc(external_value_domain)
+            ._search(external_value_domain, bypass_access=True)
             .where_clause
         )
 
@@ -6318,8 +6323,8 @@ class AccountReport(models.Model):
                 external_values_domain.append(("date", ">=", date_from))
 
             if expression.formula == "most_recent":
-                query = self.env["account.report.external.value"]._where_calc(
-                    external_values_domain
+                query = self.env["account.report.external.value"]._search(
+                    external_values_domain, bypass_access=True
                 )
                 rows = self.env.execute_query(
                     SQL(
@@ -6411,14 +6416,14 @@ class AccountReport(models.Model):
 
             date_scope = (
                 expression.date_scope
-                if expression.subformula == "cross_report"
+                if (expression.subformula or "").startswith("cross_report")
                 else expression_to_audit.date_scope
             )
             audit_or_domains = audit_or_domains_per_date_scope.setdefault(
                 date_scope, []
             )
             audit_or_domains.append(
-                osv.Domain.AND(
+                fields.Domain.AND(
                     [
                         expression_domain,
                         groupby_domain,
@@ -6427,11 +6432,11 @@ class AccountReport(models.Model):
             )
 
         if audit_or_domains_per_date_scope:
-            domain = osv.Domain.OR(
+            domain = fields.Domain.OR(
                 [
-                    osv.Domain.AND(
+                    fields.Domain.AND(
                         [
-                            osv.Domain.OR(audit_or_domains),
+                            fields.Domain.OR(audit_or_domains),
                             self._get_options_domain(column_group_options, date_scope),
                             groupby_domain,
                         ]
@@ -6441,7 +6446,7 @@ class AccountReport(models.Model):
             )
         else:
             # Happens when no expression was provided (empty recordset), or if none of the expressions had a standard engine
-            domain = osv.Domain.AND(
+            domain = fields.Domain.AND(
                 [
                     self._get_options_domain(column_group_options, "strict_range"),
                     groupby_domain,
@@ -6450,7 +6455,7 @@ class AccountReport(models.Model):
 
         # Analytic Filter
         if column_group_options.get("analytic_accounts"):
-            domain = osv.Domain.AND(
+            domain = fields.Domain.AND(
                 [
                     domain,
                     [
@@ -6535,7 +6540,7 @@ class AccountReport(models.Model):
 
                     account_codes_domains.append(account_codes_domain)
 
-            return osv.Domain.OR(account_codes_domains)
+            return fields.Domain.OR(account_codes_domains)
 
         if expression_to_audit.engine == "tax_tags":
             tags = self.env["account.account.tag"]._get_tax_tags(
@@ -7250,7 +7255,7 @@ class AccountReport(models.Model):
                 ]
                 for period in options["comparison"]["periods"]
             ]
-            dates_domain = osv.Domain.OR(
+            dates_domain = fields.Domain.OR(
                 [dates_domain, *unlinked_comparison_periods_domains_list]
             )
 
@@ -7263,7 +7268,7 @@ class AccountReport(models.Model):
             period_date_from = self._adjust_date_for_joined_comparison(
                 options, period_date_from
             )
-            dates_domain = osv.Domain.AND(
+            dates_domain = fields.Domain.AND(
                 [
                     [("date", ">=", period_date_from)],
                     [("date", "<=", options["date"]["date_to"])],
@@ -7273,10 +7278,10 @@ class AccountReport(models.Model):
                 options, dates_domain
             )
 
-            domain = osv.Domain.AND(
+            domain = fields.Domain.AND(
                 [
                     domain,
-                    osv.Domain.OR(
+                    fields.Domain.OR(
                         [
                             [("date", "=", False)],
                             dates_domain,
@@ -7287,11 +7292,11 @@ class AccountReport(models.Model):
 
         fiscal_position_option = options.get("fiscal_position")
         if isinstance(fiscal_position_option, int):
-            domain = osv.Domain.AND(
+            domain = fields.Domain.AND(
                 [domain, [("fiscal_position_id", "=", fiscal_position_option)]]
             )
         elif fiscal_position_option == "domestic":
-            domain = osv.Domain.AND([domain, [("fiscal_position_id", "=", False)]])
+            domain = fields.Domain.AND([domain, [("fiscal_position_id", "=", False)]])
         return domain
 
     def get_annotations(self, options):

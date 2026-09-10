@@ -910,7 +910,7 @@ class GenericTaxReportCustomHandler(models.AbstractModel):
         company_where_query = (
             self.env["account.tax"]
             .with_context(active_test=False)
-            ._where_calc(company_domain)
+            ._search(company_domain, bypass_access=True)
         )
         self.env.cr.execute(
             SQL(

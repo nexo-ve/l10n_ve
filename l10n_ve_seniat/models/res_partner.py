@@ -4,7 +4,6 @@ import re
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.fields import Domain
-from odoo.osv import expression
 
 _logger = logging.getLogger(__name__)
 
@@ -347,7 +346,7 @@ class ResPartner(models.Model):
             return domain
         if not value or not str(value).strip():
             return domain
-        if operator in expression.NEGATIVE_TERM_OPERATORS:
+        if operator in Domain.NEGATIVE_OPERATORS:
             return domain
         variant_domains = [
             [("vat", "ilike", v)]
