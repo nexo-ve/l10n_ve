@@ -1,7 +1,7 @@
 /* global owl:readonly */
 
 import {browser} from "@web/core/browser/browser";
-import {session} from "@web/session";
+import {user} from "@web/core/user";
 import {useService} from "@web/core/utils/hooks";
 
 import {removeTaxGroupingFromLineId} from "@l10n_ve_reports/js/util";
@@ -462,7 +462,7 @@ export class AccountReportController {
         This allows a more intelligent reloading of the previous options during user navigation (especially concerning sections and variants;
         you expect your report to open by default the same section as last time you opened it in this http session).
         */
-        return `account.report:${this.actionReportId}:${session.user_companies.current_company}`;
+        return `account.report:${this.actionReportId}:${user.activeCompany.id}`;
     }
 
     hasSessionOptions() {
