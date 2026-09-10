@@ -2,6 +2,7 @@ import {_t} from "@web/core/l10n/translation";
 import {Component, useState} from "@odoo/owl";
 
 import {useService} from "@web/core/utils/hooks";
+import {user} from "@web/core/user";
 import {WarningDialog} from "@web/core/errors/error_dialogs";
 
 import {DateTimeInput} from "@web/core/datetime/datetime_input";
@@ -28,7 +29,6 @@ export class AccountReportFilters extends Component {
         this.dialog = useService("dialog");
         this.orm = useService("orm");
         this.notification = useService("notification");
-        this.companyService = useService("company");
         this.controller = useState(this.env.controller);
         if (this.env.controller.options.date) {
             this.dateFilter = useState(this.initDateFilters());
@@ -728,7 +728,9 @@ export class AccountReportFilters extends Component {
         this.controller.saveSessionOptions(this.controller.options);
 
         // force the company to those impacted by the tax units, the reload will be force by this function
-        this.companyService.setCompanies(taxUnit.company_ids);
+        // Odoo 19 removed the 'company' service; user.activateCompanies replaces
+        // setCompanies, with the same child-company and reload defaults.
+        user.activateCompanies(taxUnit.company_ids);
     }
 
     async toggleHideZeroLines() {
