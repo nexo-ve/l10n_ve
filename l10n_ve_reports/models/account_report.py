@@ -5242,9 +5242,14 @@ class AccountReport(models.Model):
         sql = SQL(
             """
             SELECT
-                SUBSTRING(%(acc_tag_name)s, 2, LENGTH(%(acc_tag_name)s) - 1) AS formula,
+                -- Up to 18 tax tags were always named '+<tag>'/'-<tag>', so the name
+                -- was stripped by position and the sign read from tax_negate. Odoo 19
+                -- dropped tax_negate and keeps a single unsigned tag, letting the report
+                -- expression carry the sign. Stripping the sign only when it is there,
+                -- and deriving it from the name, covers both shapes.
+                REGEXP_REPLACE(%(acc_tag_name)s, '^[+-]', '') AS formula,
                 SUM(%(balance_select)s
-                    * CASE WHEN acc_tag.tax_negate THEN -1 ELSE 1 END
+                    * CASE WHEN STARTS_WITH(%(acc_tag_name)s, '-') THEN -1 ELSE 1 END
                     * CASE WHEN account_move_line.tax_tag_invert THEN -1 ELSE 1 END
                 ) AS balance,
                 COUNT(account_move_line.id) AS aml_count
@@ -5279,7 +5284,7 @@ class AccountReport(models.Model):
             currency_table_join=self._currency_table_aml_join(options),
             search_condition=query.where_clause,
             groupby_clause=SQL(
-                "SUBSTRING(%(acc_tag_name)s, 2, LENGTH(%(acc_tag_name)s) - 1)%(groupby_sql)s",
+                "REGEXP_REPLACE(%(acc_tag_name)s, '^[+-]', '')%(groupby_sql)s",
                 acc_tag_name=acc_tag_name,
                 groupby_sql=SQL(", %s", groupby_sql) if groupby_sql else SQL(),
             ),

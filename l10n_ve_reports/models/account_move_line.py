@@ -13,6 +13,57 @@ class AccountMoveLine(models.Model):
         compute="_compute_exclude_bank_lines", store=True
     )
 
+    # Odoo 19 dropped account.move.line.tax_tag_invert from core, but the tax
+    # report engine and the journal report tax grids still need to know whether a
+    # line's balance must be flipped before it is reported under its tax tags.
+    # Reintroduced here with the Odoo 18 definition and compute.
+    tax_tag_invert = fields.Boolean(
+        string="Invert Tags",
+        compute="_compute_tax_tag_invert",
+        store=True,
+        readonly=False,
+        copy=False,
+    )
+
+    @api.depends(
+        "move_id.move_type",
+        "tax_ids",
+        "tax_repartition_line_id",
+        "debit",
+        "credit",
+        "tax_tag_ids",
+        "is_refund",
+        "move_id.tax_cash_basis_origin_move_id",
+    )
+    def _compute_tax_tag_invert(self):
+        for record in self:
+            origin_move_id = (
+                record.move_id.tax_cash_basis_origin_move_id or record.move_id
+            )
+            if not record.tax_repartition_line_id and not record.tax_ids:
+                # Invoices imported from other softwares might only have kept the
+                # tags, not the taxes.
+                record.tax_tag_invert = (
+                    record.tax_tag_ids and origin_move_id.is_inbound()
+                )
+            elif origin_move_id.move_type == "entry":
+                # For misc operations, cash basis entries and write-offs from the
+                # bank reconciliation widget
+                tax = record.tax_repartition_line_id.tax_id or record.tax_ids[:1]
+                is_refund = record.is_refund
+                tax_type = tax.type_tax_use
+                if record.display_type == "epd":
+                    # In case of early payment, tax_tag_invert is independent of
+                    # the balance of the line
+                    record.tax_tag_invert = tax_type == "purchase"
+                else:
+                    record.tax_tag_invert = (tax_type == "purchase" and is_refund) or (
+                        tax_type == "sale" and not is_refund
+                    )
+            else:
+                # For invoices with taxes
+                record.tax_tag_invert = origin_move_id.is_inbound()
+
     @api.depends("journal_id")
     def _compute_exclude_bank_lines(self):
         for move_line in self:

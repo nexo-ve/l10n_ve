@@ -1659,7 +1659,13 @@ class JournalReportCustomHandler(models.AbstractModel):
                     %(country_name)s AS country_name,
                     tag.id,
                     %(tag_name)s AS name,
-                    CASE WHEN tag.tax_negate IS TRUE THEN '-' ELSE '+' END,
+                    -- Odoo 19 dropped account.account.tag.tax_negate. Up to 18 the tag
+                    -- pair was always created as '-<tag>' (tax_negate) and '+<tag>', so
+                    -- the flag is equivalent to the sign carried by the name; 19 keeps a
+                    -- single unsigned tag and lets the report expression carry the sign.
+                    -- Reading the name covers both: signed tags kept from an 18 database
+                    -- and unsigned 19 ones.
+                    CASE WHEN STARTS_WITH(%(tag_name)s, '-') THEN '-' ELSE '+' END,
                     SUM(COALESCE("account_move_line".balance, 0)
                         * CASE WHEN "account_move_line".tax_tag_invert THEN -1 ELSE 1 END
                         ) AS balance

@@ -3367,8 +3367,10 @@ class TestTaxReport(TestAccountReportsCommon):
         """Setup 2 tax reports, taxes and partner to represent a multiVat context in which both taxes affect both tax report"""
 
         def get_positive_tag(report_line):
+            # Odoo 19 dropped account.account.tag.tax_negate; the sign lives in the
+            # tag name ('+<tag>'/'-<tag>' up to 18, unsigned in 19).
             return report_line.expression_ids._get_matching_tags().filtered(
-                lambda x: not x.tax_negate
+                lambda x: not x.name.startswith("-")
             )
 
         self.env["account.fiscal.position"].create(
