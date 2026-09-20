@@ -285,7 +285,7 @@ class TestPartnerLedgerReport(TestAccountReportsCommon):
         )
         cls.move_2017_2.action_post()
 
-        cls.report = cls.env.ref("account_reports.partner_ledger_report")
+        cls.report = cls.env.ref("l10n_ve_reports.partner_ledger_report")
 
     def test_partner_ledger_unfold(self):
         """Test unfolding a line when rendering the whole report."""

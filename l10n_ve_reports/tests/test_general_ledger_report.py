@@ -286,7 +286,7 @@ class TestGeneralLedgerReport(TestAccountReportsCommon, odoo.tests.HttpCase):
             force_deactivate=True
         ).active = False
 
-        cls.report = cls.env.ref("account_reports.general_ledger_report")
+        cls.report = cls.env.ref("l10n_ve_reports.general_ledger_report")
 
     # -------------------------------------------------------------------------
     # TESTS: General Ledger
@@ -1155,7 +1155,7 @@ class TestGeneralLedgerReport(TestAccountReportsCommon, odoo.tests.HttpCase):
 
     def test_general_ledger_same_date_ordering(self):
         self.env.company.account_sale_tax_id = None
-        report = self.env.ref("account_reports.general_ledger_report")
+        report = self.env.ref("l10n_ve_reports.general_ledger_report")
         options = self._generate_options(
             report,
             fields.Date.from_string("2010-01-01"),

@@ -15,7 +15,7 @@ class TestAccountReportsTaxReminder(TestAccountReportsCommon):
         super().setUpClass()
         cls.report = cls.env.ref("account.generic_tax_report")
         cls.pay_activity_id = cls.env.ref(
-            "account_reports.mail_activity_type_tax_report_to_pay"
+            "l10n_ve_reports.mail_activity_type_tax_report_to_pay"
         ).id
         cls.options = cls._generate_options(cls.report, "2024-08-01", "2024-08-31")
         action = (
@@ -28,10 +28,10 @@ class TestAccountReportsTaxReminder(TestAccountReportsCommon):
     def test_posting_adds_an_activity(self):
         """Posting the tax report move should be adding the proper tax to be sent activity"""
         act_type_tax_to_pay = self.env.ref(
-            "account_reports.mail_activity_type_tax_report_to_pay"
+            "l10n_ve_reports.mail_activity_type_tax_report_to_pay"
         )
         act_type_report_to_send = self.env.ref(
-            "account_reports.mail_activity_type_tax_report_to_be_sent"
+            "l10n_ve_reports.mail_activity_type_tax_report_to_be_sent"
         )
         all_report_activity_type = act_type_report_to_send + act_type_tax_to_pay
 

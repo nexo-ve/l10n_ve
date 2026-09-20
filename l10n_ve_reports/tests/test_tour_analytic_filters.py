@@ -11,7 +11,7 @@ class TestTourAccountAnalyticFilters(AccountTestInvoicingHttpCommon):
         super().setUpClass()
 
         cls.env.user.group_ids += cls.env.ref("analytic.group_analytic_accounting")
-        cls.report = cls.env.ref("account_reports.profit_and_loss")
+        cls.report = cls.env.ref("l10n_ve_reports.profit_and_loss")
         cls.report.write({"filter_analytic": True})
         cls.analytic_plan = cls.env["account.analytic.plan"].create(
             {

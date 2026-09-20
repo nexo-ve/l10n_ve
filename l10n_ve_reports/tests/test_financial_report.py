@@ -320,7 +320,7 @@ class TestFinancialReport(TestAccountReportsCommon):
         )
         cls.move_2017.action_post()
 
-        cls.report = cls.env.ref("account_reports.balance_sheet")
+        cls.report = cls.env.ref("l10n_ve_reports.balance_sheet")
 
         cls.report_no_parent_id = cls.env["account.report"].create(
             {
@@ -614,7 +614,7 @@ class TestFinancialReport(TestAccountReportsCommon):
 
     def test_financial_report_single_company(self):
         line_id = self._get_basic_line_dict_id_from_report_line_ref(
-            "account_reports.account_financial_report_bank_view0"
+            "l10n_ve_reports.account_financial_report_bank_view0"
         )
         self.report.filter_multi_company = "disabled"
         options = self._generate_options(
@@ -679,7 +679,7 @@ class TestFinancialReport(TestAccountReportsCommon):
 
     def test_financial_report_multi_company_currency(self):
         line_id = self._get_basic_line_dict_id_from_report_line_ref(
-            "account_reports.account_financial_report_bank_view0"
+            "l10n_ve_reports.account_financial_report_bank_view0"
         )
         options = self._generate_options(
             self.report,
@@ -745,7 +745,7 @@ class TestFinancialReport(TestAccountReportsCommon):
 
     def test_financial_report_comparison(self):
         line_id = self._get_basic_line_dict_id_from_report_line_ref(
-            "account_reports.account_financial_report_bank_view0"
+            "l10n_ve_reports.account_financial_report_bank_view0"
         )
         options = self._generate_options(
             self.report,
@@ -802,7 +802,7 @@ class TestFinancialReport(TestAccountReportsCommon):
 
     def test_financial_report_horizontal_group(self):
         line_id = self._get_basic_line_dict_id_from_report_line_ref(
-            "account_reports.account_financial_report_receivable0"
+            "l10n_ve_reports.account_financial_report_receivable0"
         )
         self.report.horizontal_group_ids |= self.horizontal_group
 
@@ -1288,9 +1288,9 @@ class TestFinancialReport(TestAccountReportsCommon):
         )
         move.action_post()
         move.line_ids.flush_recordset()
-        profit_and_loss_report = self.env.ref("account_reports.profit_and_loss")
+        profit_and_loss_report = self.env.ref("l10n_ve_reports.profit_and_loss")
         line_id = self._get_basic_line_dict_id_from_report_line_ref(
-            "account_reports.account_financial_report_revenue0"
+            "l10n_ve_reports.account_financial_report_revenue0"
         )
         options = self._generate_options(
             profit_and_loss_report, "2020-02-01", "2020-02-28"
@@ -1340,9 +1340,9 @@ class TestFinancialReport(TestAccountReportsCommon):
         )
         move.action_post()
         move.line_ids.flush_recordset()
-        profit_and_loss_report = self.env.ref("account_reports.profit_and_loss")
+        profit_and_loss_report = self.env.ref("l10n_ve_reports.profit_and_loss")
         line_id = self._get_basic_line_dict_id_from_report_line_ref(
-            "account_reports.account_financial_report_revenue0"
+            "l10n_ve_reports.account_financial_report_revenue0"
         )
         options = self._generate_options(
             profit_and_loss_report, "2020-02-01", "2020-02-28"

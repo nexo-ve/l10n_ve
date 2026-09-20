@@ -11,7 +11,7 @@ class TestJournalReport(TestAccountReportsCommon):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.report = cls.env.ref("account_reports.journal_report")
+        cls.report = cls.env.ref("l10n_ve_reports.journal_report")
 
         ##############
         # Bank entries

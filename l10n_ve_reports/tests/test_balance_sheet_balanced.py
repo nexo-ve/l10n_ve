@@ -30,9 +30,9 @@ REPORT_CONFIG = {
 } """
 
 REPORT_CONFIG = {
-    "account_reports.balance_sheet": {
-        "asset_line_ref": "account_reports.account_financial_report_total_assets0",
-        "liability_line_ref": "account_reports.account_financial_report_liabilities_and_equity_view0",
+    "l10n_ve_reports.balance_sheet": {
+        "asset_line_ref": "l10n_ve_reports.account_financial_report_total_assets0",
+        "liability_line_ref": "l10n_ve_reports.account_financial_report_liabilities_and_equity_view0",
     },
     "l10n_at_reports.account_financial_report_l10n_at_paragraph_224_ugb": {
         "asset_line_ref": "l10n_at_reports.account_financial_report_l10n_at_paragraph_224_ugb_line_activa",
@@ -512,7 +512,7 @@ class TestBalanceSheetBalanced(TestAccountReportsCommon):
 
         # Find the available Balance Sheets for the current company.
         generic_balance_sheet = self.env.ref(
-            "account_reports.balance_sheet"
+            "l10n_ve_reports.balance_sheet"
         ).with_company(self.env.company)
         generic_balance_sheet.with_context(active_test=False).variant_report_ids.write(
             {"active": True}

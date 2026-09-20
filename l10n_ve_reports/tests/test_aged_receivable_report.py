@@ -363,9 +363,9 @@ class TestAgedReceivableReport(TestAccountReportsCommon):
             force_deactivate=True
         ).active = False
         cls.env.companies = cls.company_data["company"] + cls.company_data_2["company"]
-        cls.report = cls.env.ref("account_reports.aged_receivable_report")
+        cls.report = cls.env.ref("l10n_ve_reports.aged_receivable_report")
         cls.parent_line_id = cls._get_basic_line_dict_id_from_report_line_ref(
-            "account_reports.aged_receivable_line"
+            "l10n_ve_reports.aged_receivable_line"
         )
 
     def test_aged_receivable_unfold_1_whole_report(self):

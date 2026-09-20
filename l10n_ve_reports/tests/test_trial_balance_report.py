@@ -282,7 +282,7 @@ class TestTrialBalanceReport(TestAccountReportsCommon):
             force_deactivate=True
         ).active = False
 
-        cls.report = cls.env.ref("account_reports.trial_balance_report")
+        cls.report = cls.env.ref("l10n_ve_reports.trial_balance_report")
 
     # -------------------------------------------------------------------------
     # TESTS: Trial Balance
@@ -985,7 +985,7 @@ class TestTrialBalanceReport(TestAccountReportsCommon):
             ],
             options,
         )
-        general_ledger = self.env.ref("account_reports.general_ledger_report")
+        general_ledger = self.env.ref("l10n_ve_reports.general_ledger_report")
         params = {"line_id": lines[1]["id"]}
         res = self.report.caret_option_open_general_ledger(options, params)
         self.assertEqual(res["context"]["default_filter_accounts"], "600000")

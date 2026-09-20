@@ -1502,7 +1502,7 @@ class TestAccountReportsFilters(TestAccountReportsCommon, odoo.tests.HttpCase):
             {
                 "name": "Test ir filters",
                 "filter_aml_ir_filters": True,
-                "root_report_id": self.env.ref("account_reports.profit_and_loss").id,
+                "root_report_id": self.env.ref("l10n_ve_reports.profit_and_loss").id,
                 "column_ids": [
                     Command.create(
                         {
@@ -1556,7 +1556,7 @@ class TestAccountReportsFilters(TestAccountReportsCommon, odoo.tests.HttpCase):
         )
 
     def test_hide_line_at_0_tour(self):
-        report = self.env.ref("account_reports.balance_sheet")
+        report = self.env.ref("l10n_ve_reports.balance_sheet")
         report.filter_hide_0_lines = "optional"
         self.env["account.move"].create(
             [
@@ -1587,7 +1587,7 @@ class TestAccountReportsFilters(TestAccountReportsCommon, odoo.tests.HttpCase):
 
     @freeze_time("2020-01-16")
     def test_hide_line_at_0_tour_with_string_columns(self):
-        report = self.env.ref("account_reports.general_ledger_report")
+        report = self.env.ref("l10n_ve_reports.general_ledger_report")
         report.filter_hide_0_lines = "optional"
         self.env["account.move"].create(
             {

@@ -13,7 +13,7 @@ class TestAccountReportsTours(AccountTestInvoicingHttpCommon):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.report = cls.env.ref("account_reports.balance_sheet")
+        cls.report = cls.env.ref("l10n_ve_reports.balance_sheet")
         cls.report.column_ids.sortable = True
 
         # Create moves
@@ -117,18 +117,18 @@ class TestAccountReportsTours(AccountTestInvoicingHttpCommon):
         # Line ids
         line_id_ta = self.report._get_generic_line_id(
             "account.report.line",
-            self.env.ref("account_reports.account_financial_report_total_assets0").id,
+            self.env.ref("l10n_ve_reports.account_financial_report_total_assets0").id,
         )
         line_id_ca = self.report._get_generic_line_id(
             "account.report.line",
             self.env.ref(
-                "account_reports.account_financial_report_current_assets_view0"
+                "l10n_ve_reports.account_financial_report_current_assets_view0"
             ).id,
             parent_line_id=line_id_ta,
         )
         line_id_ba = self.report._get_generic_line_id(
             "account.report.line",
-            self.env.ref("account_reports.account_financial_report_bank_view0").id,
+            self.env.ref("l10n_ve_reports.account_financial_report_bank_view0").id,
             parent_line_id=line_id_ca,
         )
         line_id_101401 = self.report._get_generic_line_id(
@@ -139,7 +139,7 @@ class TestAccountReportsTours(AccountTestInvoicingHttpCommon):
         )
         line_id_cas = self.report._get_generic_line_id(
             "account.report.line",
-            self.env.ref("account_reports.account_financial_report_current_assets0").id,
+            self.env.ref("l10n_ve_reports.account_financial_report_current_assets0").id,
             parent_line_id=line_id_ca,
         )
         line_id_101404 = self.report._get_generic_line_id(

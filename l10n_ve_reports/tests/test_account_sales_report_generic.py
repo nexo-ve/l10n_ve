@@ -106,7 +106,7 @@ class AccountSalesReportTest(AccountSalesReportCommon):
                 ),  # Should be ignored due to non-null amount
             ]
         )
-        report = self.env.ref("account_reports.generic_ec_sales_report")
+        report = self.env.ref("l10n_ve_reports.generic_ec_sales_report")
         options = self._generate_options(report, "2019-12-01", "2019-12-31")
 
         self.assertLinesValues(
@@ -157,7 +157,7 @@ class AccountSalesReportTest(AccountSalesReportCommon):
                 (self.partner_a, self.tax_sale_a, 100),
             ]
         )
-        report = self.env.ref("account_reports.generic_ec_sales_report")
+        report = self.env.ref("l10n_ve_reports.generic_ec_sales_report")
         options = self._generate_options(report, "2019-12-01", "2019-12-31")
 
         self.assertLinesValues(

@@ -11,7 +11,7 @@ class TestBalanceSheetReport(TestAccountReportsCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.report = cls.env.ref("account_reports.balance_sheet")
+        cls.report = cls.env.ref("l10n_ve_reports.balance_sheet")
 
     def test_report_lines_ordering(self):
         """Check that the report lines are correctly ordered with nested account groups"""
@@ -60,7 +60,7 @@ class TestBalanceSheetReport(TestAccountReportsCommon):
 
         # Create the report hierarchy with the Bank and Cash Accounts lines unfolded
         line_id = self._get_basic_line_dict_id_from_report_line_ref(
-            "account_reports.account_financial_report_bank_view0"
+            "l10n_ve_reports.account_financial_report_bank_view0"
         )
         options = self._generate_options(
             self.report,
@@ -92,7 +92,7 @@ class TestBalanceSheetReport(TestAccountReportsCommon):
         )
 
     def test_balance_sheet_custom_date(self):
-        line_id = self.env.ref("account_reports.account_financial_report_bank_view0").id
+        line_id = self.env.ref("l10n_ve_reports.account_financial_report_bank_view0").id
         self.report.filter_multi_company = "disabled"
         options = self._generate_options(
             self.report,
