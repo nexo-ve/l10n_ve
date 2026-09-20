@@ -907,9 +907,9 @@ class GeneralLedgerCustomHandler(models.AbstractModel):
         }
 
     def caret_option_audit_tax(self, options, params):
-        return self.env["account.generic.tax.report.handler"].caret_option_audit_tax(
-            options, params
-        )
+        return self.env[
+            "account.generic.tax.report.handler.oca"
+        ].caret_option_audit_tax(options, params)
 
     def _report_expand_unfoldable_line_general_ledger(
         self,
