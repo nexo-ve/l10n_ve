@@ -34,3 +34,4 @@ from . import test_tax_report_default_part
 from . import test_tour_account_reports
 from . import test_tour_analytic_filters
 from . import test_trial_balance_report
+from . import test_vat_closing_entry_active_field
