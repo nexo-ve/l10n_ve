@@ -3,15 +3,21 @@
     "name": "Venezuelan Reports",
     "version": "19.0.1.0.0",
     "icon": "/poweredbyandy_saas/static/description/icon.png",
-    "summary": "View and create reports",
+    "summary": "Generic accounting reports engine, no localization dependency",
     "category": "Accounting/Accounting",
     "author": "andyengit",
     "maintainers": ["andyengit"],
     "description": """
 Accounting Reports
 ==================
+
+Generic accounting reports engine (balance sheet, P&L, cash flow,
+general ledger, trial balance, aged/partner ledger, journal, tax,
+bank reconciliation, follow-up, customer statement, sales, analytic,
+budget reports and diary/bank/cash books). Installs standalone with
+only account and web, no localization dependency.
     """,
-    "depends": ["account", "l10n_ve_seniat", "l10n_ve_withholding", "web"],
+    "depends": ["account", "web"],
     "data": [
         "security/ir.model.access.csv",
         "data/pdf_export_templates.xml",
@@ -26,10 +32,6 @@ Accounting Reports
         "data/bank_book_report.xml",
         "data/cash_book_report.xml",
         "data/daily_payments_report.xml",
-        "data/report_x.xml",
-        "data/sales_book_report.xml",
-        "data/sales_book_fiscal_machine_report.xml",
-        "data/purchases_book_report.xml",
         "data/trial_balance.xml",
         "data/sales_report.xml",
         "data/partner_ledger.xml",
@@ -41,7 +43,6 @@ Accounting Reports
         "data/account_report_actions.xml",
         "data/report_send_cron.xml",
         "data/menuitems.xml",
-        "data/seniat_reports_menuitems.xml",
         "data/mail_activity_type_data.xml",
         "data/mail_templates.xml",
         "views/account_move_views.xml",

@@ -30,6 +30,18 @@ no manual step required.
     "depends": ["l10n_ve_reports", "l10n_ve_seniat", "l10n_ve_withholding"],
     "auto_install": True,
     "license": "OEEL-1",
-    "data": [],
-    "assets": {},
+    "data": [
+        "data/report_x.xml",
+        "data/sales_book_report.xml",
+        "data/sales_book_fiscal_machine_report.xml",
+        "data/purchases_book_report.xml",
+        "data/seniat_report_actions.xml",
+        "data/menuitems.xml",
+        "data/seniat_reports_menuitems.xml",
+    ],
+    "assets": {
+        "l10n_ve_reports.assets_pdf_export": [
+            "l10n_ve_reports_seniat/static/src/scss/sales_book_report.scss",
+        ],
+    },
 }
