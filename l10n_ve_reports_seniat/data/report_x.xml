@@ -2,7 +2,7 @@
 <odoo auto_sequence="1">
     <delete
         model="account.report.column"
-        search="[('expression_label', '=', 'row_label'), ('report_id', '=', ref('l10n_ve_reports.ve_report_x'))]"
+        search="[('expression_label', '=', 'row_label'), ('report_id', '=', ref('l10n_ve_reports_seniat.ve_report_x'))]"
     />
 
     <record id="ve_report_x" model="account.report">
