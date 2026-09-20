@@ -4,6 +4,34 @@ from odoo import Command, _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
+class AccountTaxGroup(models.Model):
+    _inherit = "account.tax.group"
+
+    @api.model
+    def _check_misconfigured_tax_groups(self, company, countries):
+        """Whether any tax group of `company` in `countries` (or without
+        country) lacks an account required by the tax closing entry.
+        Mirrors the skip rule of models/account_generic_tax_report.py:446.
+
+        Deviation from upstream: upstream scopes this through account.tax;
+        scanning all groups also covers groups reachable only via archived
+        taxes with historical move lines, at the cost of flagging unused
+        groups.
+        """
+        return bool(
+            self.search(
+                [
+                    *self._check_company_domain(company),
+                    ("country_id", "in", [*countries.ids, False]),
+                    "|",
+                    ("tax_payable_account_id", "=", False),
+                    ("tax_receivable_account_id", "=", False),
+                ],
+                limit=1,
+            )
+        )
+
+
 class AccountTaxUnit(models.Model):
     _name = "account.tax.unit"
     _description = "Tax Unit"
