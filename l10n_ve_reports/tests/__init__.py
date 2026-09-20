@@ -27,6 +27,7 @@ from . import test_partner_ledger_report
 from . import test_reconciliation_report
 from . import test_report_engines
 from . import test_report_sections
+from . import test_tax_group_misconfiguration
 from . import test_tax_report
 from . import test_tax_report_carryover
 from . import test_tax_report_default_part
