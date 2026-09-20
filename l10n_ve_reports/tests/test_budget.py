@@ -153,6 +153,20 @@ class TestBudgetReport(TestAccountReportsCommon):
             moves.action_post()
         return moves
 
+    def setUp(self):
+        super().setUp()
+        # account_report_budget_temp_aml is created with ON COMMIT DROP
+        # (models/account_report.py:_create_report_budget_temp_table), but
+        # TransactionCase tests roll back rather than commit, so the temp
+        # table survives (with another test's stale rows) across every test
+        # method in the same DB session. Drop it before each test so this
+        # class's own budget computations are never masked by leftovers
+        # from an earlier test (e.g. test_all_reports_generation.py, which
+        # runs first alphabetically and also computes budget report values).
+        self.env.cr.execute(
+            "DROP TABLE IF EXISTS account_report_budget_temp_aml"
+        )
+
     def test_reports_single_budget(self):
         self._create_moves(
             {
@@ -603,6 +617,94 @@ class TestBudgetReport(TestAccountReportsCommon):
             [0, 1, 2],
             expected_lines,
             options,
+        )
+
+    def test_budget_show_all_accounts(self):
+        """The show_all_accounts raw SQL path
+        (models/account_report.py:2981, ``FROM account_report_budget``)
+        must execute against the renamed ``account_report_budget_oca``
+        table without a missing-relation error, and must populate the
+        budget shadow table with real rows.
+
+        DEVIATION (recorded, out of scope for bucket 10/11): the
+        show_all_accounts FEATURE itself has multiple pre-existing defects
+        independent of this table rename, unmasked now that the SQL no
+        longer crashes before reaching them:
+        - it does not exclude already-budgeted accounts from its
+          placeholder cross-join, so a budgeted account's own total gets
+          corrupted to 0 once show_all_accounts is combined with
+          ``_get_lines`` (confirmed via manual investigation, not asserted
+          here to avoid depending on that broken path);
+        - even the already-existing ``test_report_budget_show_all_accounts_filter``
+          test still fails (``4 != 21`` lines) for a related reason.
+        These are reported separately rather than fixed here; this test is
+        scoped to the raw SQL statement itself, which is bucket 11's
+        actual target, verified directly against
+        ``_create_report_budget_temp_table`` rather than through the
+        broken end-to-end ``_get_lines`` path.
+        """
+        options = self._generate_options(
+            self.report,
+            "2020-01-01",
+            "2020-01-01",
+            default_options={
+                "budgets": [{"id": self.budget_1.id, "selected": True}],
+                "show_all_accounts": True,
+            },
+        )
+
+        # Must not raise psycopg2.errors.UndefinedTable on
+        # account_report_budget.
+        self.report._create_report_budget_temp_table(options)
+
+        self.env.cr.execute(
+            "SELECT COUNT(*) FROM account_report_budget_temp_aml WHERE budget_id = %s",
+            (self.budget_1.id,),
+        )
+        (row_count,) = self.env.cr.fetchone()
+        self.assertGreater(
+            row_count,
+            0,
+            "show_all_accounts must populate the budget shadow table from "
+            "the renamed account_report_budget_oca table",
+        )
+
+        # display_type is required in Odoo 19 (always 'product' for a
+        # regular line). Odoo 19 emits a bare `display_type NOT IN (...)`
+        # without an `IS NULL` fallback in report domains, so a NULL
+        # display_type on a shadow row makes SQL's `NULL NOT IN (...)`
+        # evaluate to NULL (not true), silently dropping the row from
+        # every report domain that excludes line_section/line_note.
+        self.env.cr.execute(
+            "SELECT COUNT(*) FROM account_report_budget_temp_aml "
+            "WHERE budget_id = %s "
+            "AND display_type NOT IN ('line_section', 'line_note')",
+            (self.budget_1.id,),
+        )
+        (non_section_count,) = self.env.cr.fetchone()
+        self.assertEqual(
+            non_section_count,
+            row_count,
+            "every show_all_accounts shadow row must carry a non-NULL "
+            "display_type, or it silently vanishes from report domains "
+            "that exclude line_section/line_note",
+        )
+
+        # Isolate the placeholder rows produced by the second INSERT (the
+        # show_all_accounts cross-join reading account_report_budget_oca),
+        # which are always inserted with debit=0/credit=0, so this third
+        # SQL identifier has its own dedicated assertion.
+        self.env.cr.execute(
+            "SELECT COUNT(*) FROM account_report_budget_temp_aml "
+            "WHERE budget_id = %s AND debit = 0 AND credit = 0",
+            (self.budget_1.id,),
+        )
+        (placeholder_count,) = self.env.cr.fetchone()
+        self.assertGreater(
+            placeholder_count,
+            0,
+            "show_all_accounts must insert placeholder rows (debit=0, "
+            "credit=0) from the renamed account_report_budget_oca table",
         )
 
     def test_financial_budget_with_analytic_groupby(self):
