@@ -100,47 +100,6 @@
             />
         </record>
 
-        <record id="action_account_report_ve_report_x" model="ir.actions.client">
-            <field name="name">🇻🇪 Reporte X</field>
-            <field name="tag">account_report_oca</field>
-            <field name="path">report-x-ve</field>
-            <field
-                name="context"
-                eval="{'report_id': ref('l10n_ve_reports.ve_report_x')}"
-            />
-        </record>
-
-        <record id="action_account_report_sales_book" model="ir.actions.client">
-            <field name="name">🇻🇪 Libro de Ventas</field>
-            <field name="tag">account_report_oca</field>
-            <field name="path">sales-book-ve</field>
-            <field
-                name="context"
-                eval="{'report_id': ref('l10n_ve_reports.sales_book_report')}"
-            />
-        </record>
-        <record
-            id="action_account_report_sales_book_fiscal_machine"
-            model="ir.actions.client"
-        >
-            <field name="name">🇻🇪 Libro de Ventas Maquina Fiscal</field>
-            <field name="tag">account_report_oca</field>
-            <field name="path">sales-book-fiscal-machine-ve</field>
-            <field
-                name="context"
-                eval="{'report_id': ref('l10n_ve_reports.sales_book_fiscal_machine_report')}"
-            />
-        </record>
-        <record id="action_account_report_purchases_book" model="ir.actions.client">
-            <field name="name">🇻🇪 Libro de Compras</field>
-            <field name="tag">account_report_oca</field>
-            <field name="path">purchases-book-ve</field>
-            <field
-                name="context"
-                eval="{'report_id': ref('l10n_ve_reports.purchases_book_report')}"
-            />
-        </record>
-
         <record id="action_account_report_ar" model="ir.actions.client">
             <field name="name">🇻🇪 Aged Receivable</field>
             <field name="tag">account_report_oca</field>
