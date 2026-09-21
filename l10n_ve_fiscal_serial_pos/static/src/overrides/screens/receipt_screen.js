@@ -3,7 +3,7 @@
 import { ReceiptScreen } from "@point_of_sale/app/screens/receipt_screen/receipt_screen";
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
-import { useTrackedAsync } from "@point_of_sale/app/utils/hooks";
+import { useTrackedAsync } from "@point_of_sale/app/hooks/hooks";
 import {
     l10nVeFiscalSerialPosExecutePrint,
     l10nVeFiscalSerialPosIsFiscalMachine,

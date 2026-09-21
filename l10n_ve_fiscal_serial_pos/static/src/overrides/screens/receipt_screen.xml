@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
     <t t-name="l10n_ve_fiscal_serial_pos.ReceiptScreen" t-inherit="l10n_ve_pos.ReceiptScreen" t-inherit-mode="extension">
-        <xpath expr="//div[hasclass('o_payment_successful')]/hr" position="after">
+        <!-- Odoo 19 removed the <hr/> this used to anchor on (see the
+             l10n_ve_pos.ReceiptScreen extension for the same adaptation). -->
+        <xpath expr="//div[hasclass('o_payment_successful')]/div[hasclass('receipt-options')]" position="before">
             <button
                 t-if="l10nVeShowFiscalReprint"
                 type="button"

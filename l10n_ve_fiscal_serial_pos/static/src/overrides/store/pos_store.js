@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { PosStore } from "@point_of_sale/app/store/pos_store";
+import { PosStore } from "@point_of_sale/app/services/pos_store";
 import { patch } from "@web/core/utils/patch";
 import {
     l10nVeFiscalSerialPosGetFiscalMachineId,
@@ -32,7 +32,7 @@ async function syncFiscalMachineFromPosOrder(pos, env) {
 }
 
 patch(PosStore.prototype, {
-    async selectInvoiceJournal(order = this.get_order()) {
+    async selectInvoiceJournal(order = this.getOrder()) {
         const selectedJournal = await super.selectInvoiceJournal(...arguments);
         if (selectedJournal) {
             await syncFiscalMachineFromPosOrder(this, this.env);

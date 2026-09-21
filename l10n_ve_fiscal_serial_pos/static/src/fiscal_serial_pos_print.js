@@ -5,7 +5,7 @@ import { createFiscalSerialAuditLogger } from "@l10n_ve_fiscal_serial/fiscal_ser
 import { TfhkaWebSerialTransport } from "@l10n_ve_fiscal_serial/fiscal_serial/tfhka_transport_webserial";
 
 export function l10nVeFiscalSerialPosGetInvoiceJournal(pos) {
-    const order = typeof pos.get_order === "function" ? pos.get_order() : null;
+    const order = typeof pos.getOrder === "function" ? pos.getOrder() : null;
     return order?.invoice_journal_id || pos.config?.invoice_journal_id || false;
 }
 
@@ -65,8 +65,8 @@ export function l10nVeFiscalSerialPosIncrementCounter(value, minWidth = 8) {
 }
 
 export function l10nVeFiscalSerialPosLastNumberForPlaceholders(pos, machine) {
-    const order = typeof pos.get_order === "function" ? pos.get_order() : null;
-    if (order && typeof order._isRefundOrder === "function" && order._isRefundOrder()) {
+    const order = typeof pos.getOrder === "function" ? pos.getOrder() : null;
+    if (Boolean(order?.isRefund)) {
         return machine.last_credit_note_number;
     }
     return machine.last_invoice_number;
@@ -175,7 +175,7 @@ export function l10nVeFiscalSerialPosBuildLocalReprintPayload(pos, order) {
         throw new Error(_t("La orden no tiene número fiscal para reimprimir."));
     }
     const isRefund =
-        order && typeof order._isRefundOrder === "function" && order._isRefundOrder();
+        Boolean(order?.isRefund);
     return {
         l10n_ve_print_action: "reprint",
         type: isRefund ? "out_refund" : "out_invoice",
@@ -196,15 +196,23 @@ export function l10nVeFiscalSerialPosBuildLocalPayload(pos, order) {
             _t("El diario de facturación no tiene máquina fiscal configurada.")
         );
     }
-    const partner = order?.get_partner?.() || order?.partner_id || {};
+    const partner = order?.getPartner?.() || order?.partner_id || {};
     const isRefund =
-        order && typeof order._isRefundOrder === "function" && order._isRefundOrder();
+        Boolean(order?.isRefund);
     let globalDiscountAmount = 0;
     if (typeof order?._l10nVeGetFiscalGlobalDiscountAmount === "function") {
         globalDiscountAmount = Math.abs(
             Number(order._l10nVeGetFiscalGlobalDiscountAmount()) || 0
         );
     }
+    // NOTE: Odoo 19 removed `get_unit_price`/`get_all_prices`/`get_taxes` from
+    // PosOrderline without a single drop-in replacement (pricing now goes
+    // through the `prices`/`unitPrices` getters, which return a different
+    // shape). The `?.()` fallbacks below already degrade gracefully to the
+    // raw stored fields (`price_unit`, `discount`, `tax_ids`) and to a
+    // percentage-based discount estimate, which is only used here in the
+    // local/offline fiscal-printing fallback (the primary path calls the
+    // server, which computes exact amounts).
     const invoiceLines = [];
     for (const line of order?.lines || []) {
         const isEwallet =
@@ -236,8 +244,8 @@ export function l10nVeFiscalSerialPosBuildLocalPayload(pos, order) {
         const priceUnit = Math.abs(
             Number(line.get_unit_price?.() ?? line.price_unit) || 0
         );
-        const quantity = Math.abs(Number(line.get_quantity?.() ?? line.qty) || 0);
-        const discountPercent = Number(line.get_discount?.() ?? line.discount) || 0;
+        const quantity = Math.abs(Number(line.getQuantity?.() ?? line.qty) || 0);
+        const discountPercent = Number(line.getDiscount?.() ?? line.discount) || 0;
         let discountAmount = 0;
         if (discountPercent > 0 && typeof line.get_all_prices === "function") {
             const prices = line.get_all_prices();
@@ -265,7 +273,7 @@ export function l10nVeFiscalSerialPosBuildLocalPayload(pos, order) {
     const paymentLines = (order?.payment_ids || [])
         .filter((payment) => !payment.is_change && payment.payment_method_id?.type !== "pay_later")
         .map((payment) => ({
-            amount: Math.abs(Number(payment.get_amount?.() ?? payment.amount) || 0),
+            amount: Math.abs(Number(payment.getAmount?.() ?? payment.amount) || 0),
             payment_method: l10nVeFiscalSerialPosPaymentCode(payment.payment_method_id),
         }))
         .filter((line) => line.amount > 0);
@@ -356,9 +364,9 @@ export function l10nVeFiscalSerialPosSyncMachineCounters(pos, response) {
     const vals = {};
     const sequence = d.sequence !== undefined && d.sequence !== null ? String(d.sequence) : false;
     if (sequence) {
-        const order = typeof pos.get_order === "function" ? pos.get_order() : null;
+        const order = typeof pos.getOrder === "function" ? pos.getOrder() : null;
         const isRefund =
-            order && typeof order._isRefundOrder === "function" && order._isRefundOrder();
+            Boolean(order?.isRefund);
         if (isRefund) {
             vals.last_credit_note_number = sequence;
         } else {
