@@ -1925,9 +1925,9 @@ class AccountReport(models.Model):
                         ON %(aml_table)s.company_id = account_currency_table.company_id
                         AND (
                             account_currency_table.rate_type = CASE
-                                WHEN aml_ct_account.account_type LIKE %(equity_prefix)s THEN 'historical'
                                 WHEN aml_ct_account.account_type LIKE ANY (ARRAY[%(income_prefix)s, %(expense_prefix)s, 'equity_unaffected']) THEN 'average'
-                                ELSE 'closing'
+                                WHEN aml_ct_account.account_type LIKE %(equity_prefix)s THEN 'historical'
+                                ELSE 'current'
                             END
                         )
                         AND (account_currency_table.date_from IS NULL OR account_currency_table.date_from <= %(aml_table)s.date)
