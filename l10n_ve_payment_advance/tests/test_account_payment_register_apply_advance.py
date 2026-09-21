@@ -1,3 +1,4 @@
+from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 
@@ -13,6 +14,53 @@ class TestAccountPaymentRegisterApplyAdvance(L10nVePaymentAdvanceCommon):
         return payment.move_id.line_ids.filtered(
             lambda line: line.account_id == self.customer_advance_account
         )
+
+    def _create_line_on_unconfigured_account(self, partner=None, amount=500.0):
+        """Open credit line for the SAME partner on a non-advance account.
+
+        Isolates the account check from the partner check: the only thing wrong
+        with this line is which account it sits on.
+        """
+        partner = partner or self.customer
+        other_account = self.env["account.account"].create(
+            {
+                "name": "Unconfigured Liability Test",
+                "code": "210903",
+                "account_type": "liability_current",
+                "reconcile": True,
+                "company_ids": [Command.set([self.company.id])],
+            }
+        )
+        entry = self.env["account.move"].create(
+            {
+                "move_type": "entry",
+                "partner_id": partner.id,
+                "line_ids": [
+                    Command.create(
+                        {
+                            "name": "Not an advance",
+                            "account_id": other_account.id,
+                            "partner_id": partner.id,
+                            "credit": amount,
+                            "debit": 0.0,
+                        }
+                    ),
+                    Command.create(
+                        {
+                            "name": "Balancing line",
+                            "account_id": self.company_data[
+                                "default_account_receivable"
+                            ].id,
+                            "partner_id": partner.id,
+                            "debit": amount,
+                            "credit": 0.0,
+                        }
+                    ),
+                ],
+            }
+        )
+        entry.action_post()
+        return entry.line_ids.filtered(lambda line: line.account_id == other_account)
 
     def test_applying_advance_reconciles_against_invoice(self):
         # Arrange
@@ -108,7 +156,7 @@ class TestAccountPaymentRegisterApplyAdvance(L10nVePaymentAdvanceCommon):
         invoice = self._create_customer_invoice(amount=1000.0)
 
         # Act / Assert
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, "Seleccione la línea de anticipo"):
             self._create_register_wizard(
                 invoice,
                 amount=100.0,
@@ -116,7 +164,7 @@ class TestAccountPaymentRegisterApplyAdvance(L10nVePaymentAdvanceCommon):
             )
 
     def test_apply_advance_rejects_line_from_a_different_partner(self):
-        # Arrange
+        # Arrange: same advance account, different partner
         other_customer = self.env["res.partner"].create({"name": "Other Customer"})
         advance_line = self._create_open_advance_line(
             partner=other_customer, amount=500.0
@@ -124,7 +172,7 @@ class TestAccountPaymentRegisterApplyAdvance(L10nVePaymentAdvanceCommon):
         invoice = self._create_customer_invoice(amount=1000.0)
 
         # Act / Assert
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, "no corresponde al cliente"):
             self._create_register_wizard(
                 invoice,
                 amount=100.0,
@@ -133,22 +181,17 @@ class TestAccountPaymentRegisterApplyAdvance(L10nVePaymentAdvanceCommon):
             )
 
     def test_apply_advance_rejects_line_from_a_different_account(self):
-        # Arrange: an open supplier-advance line, applied against a customer invoice
-        bill_payment = self._create_standalone_payment(
-            self.supplier, "supplier", "outbound", amount=500.0
-        )
-        supplier_advance_line = bill_payment.move_id.line_ids.filtered(
-            lambda line: line.account_id == self.supplier_advance_account
-        )
+        # Arrange: right partner, wrong account — so only the account check can fire
+        wrong_account_line = self._create_line_on_unconfigured_account(amount=500.0)
         invoice = self._create_customer_invoice(amount=1000.0)
 
         # Act / Assert
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, "no pertenece a la cuenta de anticipos"):
             self._create_register_wizard(
                 invoice,
                 amount=100.0,
                 l10n_ve_apply_advance=True,
-                l10n_ve_advance_line_id=supplier_advance_line.id,
+                l10n_ve_advance_line_id=wrong_account_line.id,
             )
 
     def test_apply_advance_rejects_non_positive_amount(self):
@@ -157,7 +200,7 @@ class TestAccountPaymentRegisterApplyAdvance(L10nVePaymentAdvanceCommon):
         invoice = self._create_customer_invoice(amount=1000.0)
 
         # Act / Assert
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, "debe ser mayor que cero"):
             self._create_register_wizard(
                 invoice,
                 amount=0.0,
@@ -171,7 +214,7 @@ class TestAccountPaymentRegisterApplyAdvance(L10nVePaymentAdvanceCommon):
         invoice = self._create_customer_invoice(amount=1000.0)
 
         # Act / Assert
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, "más del anticipo disponible"):
             self._create_register_wizard(
                 invoice,
                 amount=300.0,
@@ -185,7 +228,9 @@ class TestAccountPaymentRegisterApplyAdvance(L10nVePaymentAdvanceCommon):
         invoice = self._create_customer_invoice(amount=1000.0)
 
         # Act / Assert
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(
+            UserError, "más del importe pendiente de la factura"
+        ):
             self._create_register_wizard(
                 invoice,
                 amount=1500.0,
