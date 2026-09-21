@@ -112,9 +112,15 @@ class ResCompany(models.Model):
     @api.constrains(
         "l10n_ve_igtf_account_id",
         "account_fiscal_country_id",
-        "partner_id.taxpayer_type",
+        "taxpayer_type",
     )
     def _check_l10n_ve_igtf_account_required_for_special(self):
+        # `@api.constrains` only accepts direct field names of this model.
+        # `taxpayer_type` is the related field defined on res.company
+        # (see l10n_ve_seniat/models/res_company.py, related to
+        # partner_id.taxpayer_type with an inverse), so it is a real,
+        # writeable field name here and its writes (through the company or
+        # through the inverse) trigger this constraint as expected.
         if self.env.context.get("l10n_ve_skip_igtf_account_check"):
             return
         for company in self:
