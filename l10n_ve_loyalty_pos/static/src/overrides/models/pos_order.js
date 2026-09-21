@@ -553,8 +553,11 @@ patch(PosOrder.prototype, {
         accountTaxHelpers.add_tax_details_in_base_lines(baseLines, company);
         accountTaxHelpers.round_base_lines_tax_details(baseLines, company);
 
+        // Same condition PosOrderAccounting._computeAllPrices() uses in Odoo 19
+        // (core no longer gates this on only_round_cash_method; that field only
+        // decides which total field `totalDue`/hasCashRounding read below).
         const cashRounding =
-            !this.config.only_round_cash_method && this.config.cash_rounding
+            this.config.cash_rounding && this.config.rounding_method
                 ? this.config.rounding_method
                 : null;
 
@@ -562,39 +565,21 @@ patch(PosOrder.prototype, {
             cash_rounding: cashRounding,
         });
 
+        // `order_sign` and `total_amount_no_rounding` are NOT part of
+        // get_tax_totals_summary()'s own output: PosOrderAccounting.
+        // _computeAllPrices() adds them itself after calling the same helper.
+        // priceIncl/totalDue/roundedPriceIncl read these fields off
+        // `prices.taxDetails`, so skipping this step leaves priceIncl
+        // `undefined` for any order with an active manual discount, which
+        // then serializes as NaN into amount_total on sync. The old
+        // order_total/order_remaining/order_rounding/order_has_zero_remaining
+        // fields computed here previously were Odoo 18 leftovers: nothing in
+        // Odoo 19 reads them anymore (remainingDue/change/orderHasZeroRemaining
+        // are now derived live from totalDue/amountPaid), so they are dropped
+        // instead of carried forward as dead weight.
         taxTotals.order_sign = documentSign;
-        taxTotals.order_total =
+        taxTotals.total_amount_no_rounding =
             taxTotals.total_amount_currency - (taxTotals.cash_rounding_base_amount_currency || 0.0);
-
-        let order_rounding = 0;
-        let remaining = taxTotals.order_total;
-        const validPayments = this.payment_ids.filter((p) => p.isDone() && !p.is_change);
-        for (const [payment, isLast] of validPayments.map((p, i) => [
-            p,
-            i === validPayments.length - 1,
-        ])) {
-            const paymentAmount = documentSign * payment.getAmount();
-            if (isLast) {
-                if (this.config.cash_rounding) {
-                    const roundedRemaining = this.getRoundedRemaining(
-                        this.config.rounding_method,
-                        remaining
-                    );
-                    if (!floatIsZero(paymentAmount - remaining, this.currency.decimal_places)) {
-                        order_rounding = roundedRemaining - remaining;
-                    }
-                }
-            }
-            remaining -= paymentAmount;
-        }
-
-        taxTotals.order_rounding = order_rounding;
-        taxTotals.order_remaining = remaining;
-        const remaining_with_rounding = remaining + order_rounding;
-        taxTotals.order_has_zero_remaining = floatIsZero(
-            remaining_with_rounding,
-            currency.decimal_places
-        );
         return taxTotals;
     },
 
