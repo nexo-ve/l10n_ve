@@ -17,6 +17,7 @@ from . import test_bank_cash_book_report
 from . import test_budget
 from . import test_cash_flow_report
 from . import test_currency_table
+from . import test_daily_payments_report
 from . import test_financial_report
 from . import test_followup_report
 from . import test_general_ledger_report
