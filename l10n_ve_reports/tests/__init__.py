@@ -27,9 +27,11 @@ from . import test_partner_ledger_report
 from . import test_reconciliation_report
 from . import test_report_engines
 from . import test_report_sections
+from . import test_tax_group_misconfiguration
 from . import test_tax_report
 from . import test_tax_report_carryover
 from . import test_tax_report_default_part
 from . import test_tour_account_reports
 from . import test_tour_analytic_filters
 from . import test_trial_balance_report
+from . import test_vat_closing_entry_active_field
