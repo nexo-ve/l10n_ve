@@ -1,22 +1,15 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from unittest import SkipTest
-
 from odoo.tests import tagged
 
 from odoo.addons.l10n_ve_seniat.tests.common import L10nVeSeniatCommon
 
 
-@tagged("post_install", "-at_install", "l10n_ve_reports")
+@tagged("post_install", "-at_install")
 class TestL10nVeBookReportColumns(L10nVeSeniatCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        reports_module = cls.env["ir.module.module"].search(
-            [("name", "=", "l10n_ve_reports"), ("state", "=", "installed")]
-        )
-        if not reports_module:
-            raise SkipTest("l10n_ve_reports is not installed")
         cls.handler = cls.env["account.sales.book.report.handler.oca"]
         cls.tax_group_model = cls.env["account.tax.group"]
         cls.ve_country = cls.env.ref("base.ve")
@@ -62,7 +55,7 @@ class TestL10nVeBookReportColumns(L10nVeSeniatCommon):
         )
 
     def test_sales_book_columns_follow_tax_group_sequence(self):
-        report = self.env.ref("l10n_ve_reports.sales_book_report")
+        report = self.env.ref("l10n_ve_reports_seniat.sales_book_report")
         options = report.get_options({})
         labels = [
             column.get("expression_label")
