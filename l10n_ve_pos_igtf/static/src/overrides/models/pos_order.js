@@ -2,8 +2,13 @@ import { PosOrder } from "@point_of_sale/app/models/pos_order";
 import { patch } from "@web/core/utils/patch";
 import { floatIsZero, roundPrecision } from "@web/core/utils/numbers";
 
-const posOrderTaxTotalsDescriptor = Object.getOwnPropertyDescriptor(PosOrder.prototype, "taxTotals");
-const rawTaxTotalsGetter = posOrderTaxTotalsDescriptor.get;
+// Odoo 19 removed the order-level `taxTotals` getter; every total (priceIncl,
+// totalDue, the receipt, ...) now reads `order.prices.taxDetails` instead.
+// Capture the *unpatched* getter the same way this module used to for
+// `taxTotals`, so the IGTF surcharge is always computed against Odoo's own
+// numbers regardless of patch order relative to other l10n_ve_* modules.
+const posOrderPricesDescriptor = Object.getOwnPropertyDescriptor(PosOrder.prototype, "prices");
+const rawPricesGetter = posOrderPricesDescriptor.get;
 
 function l10nVePosCurrencyIdsSet(order) {
     const jsonIds = order.company?.l10n_ve_igtf_currency_pos_ids_json;
@@ -51,7 +56,7 @@ patch(PosOrder.prototype, {
 
     l10n_ve_pos_updateIgtf() {
         const company = this.company;
-        if (!company?.l10n_ve_igtf_feature_active || !this.is_to_invoice()) {
+        if (!company?.l10n_ve_igtf_feature_active || !this.isToInvoice()) {
             for (const pl of this.payment_ids) {
                 pl.update({
                     include_igtf: false,
@@ -66,9 +71,9 @@ patch(PosOrder.prototype, {
         let sumIgtf = 0;
         let sumBi = 0;
 
-        const baseTotals = rawTaxTotalsGetter.call(this);
-        const orderSign = baseTotals.order_sign;
-        const maxTotalWithTax = orderSign * baseTotals.order_total;
+        const baseTaxDetails = rawPricesGetter.call(this).taxDetails;
+        const orderSign = baseTaxDetails.order_sign;
+        const maxTotalWithTax = orderSign * baseTaxDetails.total_amount_no_rounding;
         const isReturn = maxTotalWithTax < 0;
 
         for (const pl of this.payment_ids) {
@@ -83,7 +88,7 @@ patch(PosOrder.prototype, {
             if (!l10nVePosPaymentMethodAppliesIgtf(this, pl.payment_method_id)) {
                 continue;
             }
-            let amountPay = pl.get_amount();
+            let amountPay = pl.getAmount();
             const foreignPay =
                 typeof pl.getPaymentAmountCurrency === "function"
                     ? pl.getPaymentAmountCurrency()
@@ -134,67 +139,50 @@ patch(PosOrder.prototype, {
         });
     },
 
-    get taxTotals() {
-        const base = rawTaxTotalsGetter.call(this);
+    // Odoo 19 dropped `taxTotals` and computes `remainingDue`/`change`/
+    // `orderHasZeroRemaining` live from `totalDue` (itself derived from
+    // `prices.taxDetails`) and `amountPaid`, instead of caching
+    // order_remaining/order_rounding/order_has_zero_remaining inside
+    // taxTotals the way Odoo 18 did. So the only thing that needs adjusting
+    // here is the underlying total; the due/change/rounding getters then
+    // pick up the IGTF surcharge automatically.
+    get prices() {
+        const base = rawPricesGetter.call(this);
         const igtfExtra = this.igtf_amount || 0;
         if (
             !this.company?.l10n_ve_igtf_feature_active ||
-            !this.is_to_invoice() ||
+            !this.isToInvoice() ||
             floatIsZero(igtfExtra, this.currency.decimal_places)
         ) {
             return base;
         }
-        const adjustedOrderTotal = base.order_total + igtfExtra;
-        let remaining = adjustedOrderTotal;
-        const documentSign = base.order_sign;
-        const validPayments = this.payment_ids.filter((p) => p.is_done() && !p.is_change);
-        let order_rounding = 0;
-        for (const [payment, isLast] of validPayments.map((p, i) => [
-            p,
-            i === validPayments.length - 1,
-        ])) {
-            const paymentAmount = documentSign * payment.get_amount();
-            if (isLast) {
-                if (this.config.cash_rounding) {
-                    const roundedRemaining = this.getRoundedRemaining(
-                        this.config.rounding_method,
-                        remaining
-                    );
-                    if (!floatIsZero(paymentAmount - remaining, this.currency.decimal_places)) {
-                        order_rounding = roundedRemaining - remaining;
-                    }
-                }
-            }
-            remaining -= paymentAmount;
-        }
-        const remaining_with_rounding = remaining + order_rounding;
+        const taxDetails = base.taxDetails;
         return {
             ...base,
-            order_total: adjustedOrderTotal,
-            order_remaining: remaining,
-            order_rounding,
-            order_has_zero_remaining: floatIsZero(
-                remaining_with_rounding,
-                this.currency.decimal_places
-            ),
+            taxDetails: {
+                ...taxDetails,
+                total_amount_no_rounding: taxDetails.total_amount_no_rounding + igtfExtra,
+                total_amount_currency: taxDetails.total_amount_currency + igtfExtra,
+                total_amount: (taxDetails.total_amount ?? taxDetails.total_amount_currency) + igtfExtra,
+            },
         };
     },
 
-    add_paymentline(payment_method) {
-        const res = super.add_paymentline(...arguments);
+    addPaymentline(payment_method) {
+        const res = super.addPaymentline(...arguments);
         if (res) {
             this.l10n_ve_pos_updateIgtf();
         }
         return res;
     },
 
-    remove_paymentline(line) {
-        super.remove_paymentline(...arguments);
+    removePaymentline(line) {
+        super.removePaymentline(...arguments);
         this.l10n_ve_pos_updateIgtf();
     },
 
-    set_to_invoice(to_invoice) {
-        super.set_to_invoice(...arguments);
+    setToInvoice(to_invoice) {
+        super.setToInvoice(...arguments);
         this.l10n_ve_pos_updateIgtf();
     },
 });
