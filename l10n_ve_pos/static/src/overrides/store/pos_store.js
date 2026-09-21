@@ -1,8 +1,8 @@
-import { PosStore } from "@point_of_sale/app/store/pos_store";
+import { PosStore } from "@point_of_sale/app/services/pos_store";
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
-import { SelectionPopup } from "@point_of_sale/app/utils/input_popups/selection_popup";
-import { makeAwaitable } from "@point_of_sale/app/store/make_awaitable_dialog";
+import { SelectionPopup } from "@point_of_sale/app/components/popups/selection_popup/selection_popup";
+import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
 
 function isVenezuelaCompany(pos) {
     return (
@@ -27,11 +27,12 @@ patch(PosStore.prototype, {
     _l10nVePosHasZeroQtyLines(order) {
         return (order?.lines || []).some(
             (line) =>
-                !line.combo_parent_id && this.isProductQtyZero(line.get_quantity())
+                !line.combo_parent_id && this.isProductQtyZero(line.getQuantity())
         );
     },
     async pay() {
-        const currentOrder = this.get_order();
+        // Odoo 19 renamed `get_order` to `getOrder` on PosStore.
+        const currentOrder = this.getOrder();
         if (isVenezuelaCompany(this) && this._l10nVePosHasZeroQtyLines(currentOrder)) {
             this.notification.add(
                 _t("Cannot go to payment while there are order lines with quantity 0."),
@@ -78,7 +79,7 @@ patch(PosStore.prototype, {
             return journal.currency_id.id === currencyId;
         });
     },
-    async selectInvoiceJournal(order = this.get_order()) {
+    async selectInvoiceJournal(order = this.getOrder()) {
         if (!order || !isVenezuelaCompany(this)) {
             return;
         }

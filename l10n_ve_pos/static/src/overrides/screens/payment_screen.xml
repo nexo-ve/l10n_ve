@@ -4,10 +4,10 @@
         <xpath expr="//button[hasclass('js_invoice')]" position="replace">
             <button t-if="!isVenezuelaPos"
                 class="button js_invoice btn btn-light btn-lg d-flex justify-content-between align-items-baseline w-100 w-md-50 lh-lg"
-                t-att-class="{ 'highlight active': currentOrder.is_to_invoice() }"
+                t-att-class="{ 'highlight active': currentOrder.isToInvoice() }"
                 t-on-click="toggleIsToInvoice">
                 <span><i class="fa fa-file-text-o me-2" />Invoice</span>
-                <i class="fa me-2" t-attf-class="{{ currentOrder.is_to_invoice() ? 'fa-check-square text-action' : 'fa-square-o' }}" />
+                <i class="fa me-2" t-attf-class="{{ currentOrder.isToInvoice() ? 'fa-check-square text-action' : 'fa-square-o' }}" />
             </button>
             <button t-if="isVenezuelaPos"
                 class="button js_invoice_journal btn btn-light btn-lg d-flex align-items-center text-start w-100 w-md-50 lh-lg"
@@ -79,7 +79,11 @@
         <xpath expr="//div[hasclass('center-content')]/t[@t-call='point_of_sale.PaymentScreenDue']" position="after">
             <t t-call="l10n_ve_pos.PaymentScreenVeEmissionPreview"/>
         </xpath>
-        <xpath expr="//div[hasclass('payment-screen')][hasclass('bg-200')]/t[@t-call='point_of_sale.PaymentScreenDue']" position="after">
+        <!-- Odoo 19 dropped the 'bg-200' class from the small-screen payment-screen
+             wrapper; match it by its direct PaymentScreenDue child instead, which
+             only the small-screen layout has (the desktop layout nests it under
+             'center-content', handled by the xpath above). -->
+        <xpath expr="//div[hasclass('payment-screen')]/t[@t-call='point_of_sale.PaymentScreenDue']" position="after">
             <t t-call="l10n_ve_pos.PaymentScreenVeEmissionPreview"/>
         </xpath>
     </t>

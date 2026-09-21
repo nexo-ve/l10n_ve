@@ -1,6 +1,5 @@
 import { PosOrder } from "@point_of_sale/app/models/pos_order";
 import { patch } from "@web/core/utils/patch";
-import { _t } from "@web/core/l10n/translation";
 
 function isVenezuelaCompany(order) {
     return (
@@ -22,10 +21,10 @@ patch(PosOrder.prototype, {
         return originOrder?.invoice_journal_id || false;
     },
     canChangeInvoiceJournal() {
-        return !(isVenezuelaCompany(this) && this._isRefundOrder());
+        return !(isVenezuelaCompany(this) && this.isRefund);
     },
     setInvoiceJournal(journal) {
-        if (isVenezuelaCompany(this) && this._isRefundOrder()) {
+        if (isVenezuelaCompany(this) && this.isRefund) {
             const originJournal = this._l10nVePosOriginInvoiceJournal();
             if (originJournal) {
                 if (journal && journal.id !== originJournal.id) {
@@ -41,16 +40,14 @@ patch(PosOrder.prototype, {
             this.l10n_ve_pos_updateIgtf();
         }
     },
-    set_to_invoice(to_invoice) {
+    // Odoo 19 renamed `set_to_invoice` to `setToInvoice` on PosOrder.
+    setToInvoice(to_invoice) {
         if (isVenezuelaCompany(this) && !to_invoice) {
             return;
         }
-        super.set_to_invoice(...arguments);
+        super.setToInvoice(...arguments);
     },
-    getEmailItems() {
-        if (isVenezuelaCompany(this)) {
-            return [_t("the invoice")];
-        }
-        return super.getEmailItems(...arguments);
-    },
+    // `getEmailItems` was removed from Odoo 19's PosOrder (it had no callers
+    // left in core either); there is no longer a hook to patch, so this
+    // override is dropped instead of patching a non-existent base method.
 });
