@@ -181,8 +181,13 @@ patch(PosOrder.prototype, {
     },
 
     addPaymentline(payment_method) {
+        // Odoo 19 changed addPaymentline()'s return value from a plain
+        // truthy/falsy result to a {status, data} object; `res` is now
+        // always a (truthy) object even on failure, so this must check
+        // `res.status` instead of `res` itself to keep only recomputing
+        // IGTF after an actual successful add.
         const res = super.addPaymentline(...arguments);
-        if (res) {
+        if (res?.status) {
             this.l10n_ve_pos_updateIgtf();
         }
         return res;
