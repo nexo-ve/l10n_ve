@@ -539,6 +539,168 @@ class TestGeneralLedgerReport(TestAccountReportsCommon, odoo.tests.HttpCase):
             options,
         )
 
+    def test_general_ledger_branch_unaffected_earnings(self):
+        """A branch company with its own equity-unaffected account must not
+        raise 'Expected singleton' when the General Ledger aggregates
+        unaffected earnings across a root company and its branch: each
+        company's prior-year result must land on its own account.
+        """
+        root_company = self.company_data["company"]
+        root_company.write({"child_ids": [Command.create({"name": "Branch A"})]})
+        self.cr.precommit.run()  # load the CoA on the branch
+        branch = root_company.child_ids
+        self.env.user.company_ids |= branch
+
+        branch_unaffected_account = self.env["account.account"].create(
+            {
+                "name": "Branch Undistributed Profits/Losses",
+                "code": "888888",
+                "account_type": "equity_unaffected",
+                "company_ids": [Command.set(branch.ids)],
+            }
+        )
+        # The shared test fixture already carries more than one
+        # 'equity_unaffected' account for the root company alone (this is
+        # exactly the pre-existing ambiguity the singleton bug was built on) ;
+        # any of them is an acceptable resting place for the root's own
+        # earnings, as long as it is not merged onto the branch's account.
+        root_unaffected_accounts = self.env["account.account"].search(
+            [
+                ("company_ids", "=", root_company.id),
+                ("account_type", "=", "equity_unaffected"),
+            ]
+        )
+
+        def prior_year_move(company):
+            return self.env["account.move"].create(
+                {
+                    "move_type": "entry",
+                    "company_id": company.id,
+                    "date": fields.Date.from_string("2016-01-01"),
+                    "journal_id": self.company_data["default_journal_misc"].id,
+                    "line_ids": [
+                        Command.create(
+                            {
+                                "debit": 1000.0,
+                                "credit": 0.0,
+                                "name": "expense",
+                                "account_id": self.company_data[
+                                    "default_account_expense"
+                                ].id,
+                            }
+                        ),
+                        Command.create(
+                            {
+                                "debit": 0.0,
+                                "credit": 1000.0,
+                                "name": "revenue",
+                                "account_id": self.company_data[
+                                    "default_account_revenue"
+                                ].id,
+                            }
+                        ),
+                    ],
+                }
+            )
+
+        root_move = prior_year_move(root_company)
+        root_move.action_post()
+
+        branch_move = prior_year_move(branch)
+        branch_move.action_post()
+
+        options = self._generate_options(
+            self.report,
+            fields.Date.from_string("2017-01-01"),
+            fields.Date.from_string("2017-12-31"),
+        )
+
+        # Must not raise `ValueError: Expected singleton`.
+        lines = self.report._get_lines(options)
+
+        line_names = {line["name"] for line in lines}
+        self.assertTrue(
+            line_names & set(root_unaffected_accounts.mapped("display_name")),
+            "the root company's own unaffected earnings must still be "
+            "aggregated onto one of its own accounts",
+        )
+        self.assertIn(
+            branch_unaffected_account.display_name,
+            line_names,
+            "the branch's own unaffected earnings account must be "
+            "aggregated under its own account, not merged onto the root "
+            "company's",
+        )
+
+    def test_general_ledger_unaffected_earnings_account_selection_order(self):
+        """The generic Odoo 19 CoA seeds *two* 'equity_unaffected' accounts
+        for a single company: 'Profit or Loss Appropriation' (999999) and
+        'Accumulated Retained Earnings' (999998). The prior-year result must
+        land on the account fetched first by creation order (matching the
+        code's own "first fetched account" intent), not on whichever account
+        happens to sort first by its code string (999998 < 999999).
+        """
+        root_company = self.company_data["company"]
+        profit_or_loss_account = self.env["account.account"].search(
+            [
+                ("company_ids", "=", root_company.id),
+                ("account_type", "=", "equity_unaffected"),
+                ("code", "=", "999999"),
+            ]
+        )
+        self.assertTrue(
+            profit_or_loss_account,
+            "the generic CoA must seed the 'Profit or Loss Appropriation' "
+            "account with code 999999",
+        )
+
+        move = self.env["account.move"].create(
+            {
+                "move_type": "entry",
+                "date": fields.Date.from_string("2016-01-01"),
+                "journal_id": self.company_data["default_journal_misc"].id,
+                "line_ids": [
+                    Command.create(
+                        {
+                            "debit": 1000.0,
+                            "credit": 0.0,
+                            "name": "expense",
+                            "account_id": self.company_data[
+                                "default_account_expense"
+                            ].id,
+                        }
+                    ),
+                    Command.create(
+                        {
+                            "debit": 0.0,
+                            "credit": 1000.0,
+                            "name": "revenue",
+                            "account_id": self.company_data[
+                                "default_account_revenue"
+                            ].id,
+                        }
+                    ),
+                ],
+            }
+        )
+        move.action_post()
+
+        options = self._generate_options(
+            self.report,
+            fields.Date.from_string("2017-01-01"),
+            fields.Date.from_string("2017-12-31"),
+        )
+        lines = self.report._get_lines(options)
+
+        line_names = {line["name"] for line in lines}
+        self.assertIn(
+            profit_or_loss_account.display_name,
+            line_names,
+            "the prior-year result must be aggregated onto the account "
+            "fetched first by creation order (999999), not by code-string "
+            "order (999998)",
+        )
+
     def test_general_ledger_fold_unfold_multicompany_multicurrency(self):
         """Test unfolding a line when rendering the whole report."""
         options = self._generate_options(
