@@ -125,11 +125,7 @@ class DailyPaymentsReportCustomHandler(models.AbstractModel):
         return move.date
 
     def _get_move_validation_date(self, move):
-        if move.l10n_ve_process_date:
-            return move.l10n_ve_process_date
-        payment = self._get_move_payment(move)
-        if payment and payment.l10n_ve_process_date:
-            return payment.l10n_ve_process_date
+        """Date a move is considered processed. Overridable by localizations."""
         return move.date
 
     def _get_move_filter_date(self, move, date_type):
@@ -466,24 +462,20 @@ class DailyPaymentsReportCustomHandler(models.AbstractModel):
             return date_to, date_to
         return date_from, date_to
 
+    def _get_excluded_journal_ids(self, companies):
+        """Journal ids never shown in the report. Overridable by localizations."""
+        return set()
+
     def _get_selected_bank_cash_journals(self, report, options):
         selected = report._get_options_journals(options)
         journal_ids = [j["id"] for j in selected]
         journals = self.env["account.journal"].browse(journal_ids)
         journals = journals.filtered(lambda j: j.type in ("bank", "cash"))
 
-        companies = journals.company_id
-        retention_journal_ids = set(
-            companies.mapped("iva_supplier_retention_journal_id").ids
-            + companies.mapped("iva_customer_retention_journal_id").ids
-            + companies.mapped("islr_supplier_retention_journal_id").ids
-            + companies.mapped("islr_customer_retention_journal_id").ids
-            + companies.mapped("municipal_supplier_retention_journal_id").ids
-            + companies.mapped("municipal_customer_retention_journal_id").ids
-        )
-        if not retention_journal_ids:
+        excluded = self._get_excluded_journal_ids(journals.company_id)
+        if not excluded:
             return journals
-        return journals.filtered(lambda journal: journal.id not in retention_journal_ids)
+        return journals.filtered(lambda journal: journal.id not in excluded)
 
     def _filter_moves_by_date_type(self, moves, date_from, date_to, date_type):
         return moves.filtered(
