@@ -747,6 +747,72 @@ class TestCurrencyTable(TestAccountReportsCommon):
             options,
         )
 
+    def test_currency_table_liability_line_cta_rate_conversion(self):
+        """Asset/Liability accounts (the CTA join's ``ELSE`` branch) must be converted
+        using the currency table's 'current' rate, matching Enterprise. Before the fix,
+        the ``ELSE`` branch requested a non-existent 'closing' rate_type, the LEFT JOIN
+        never matched any currency-table row, and the balance silently fell back to
+        rate 1 (no conversion at all)."""
+        self.setup_other_currency("EUR", rates=[("2020-01-01", 2)])
+        liability_report = self.env["account.report"].create(
+            {
+                "name": "Currency Table Liability Test",
+                "filter_multi_company": "selector",
+                "currency_translation": "cta",
+                "column_ids": [
+                    Command.create({"name": "Balance", "expression_label": "balance"})
+                ],
+                "line_ids": [
+                    Command.create(
+                        {
+                            "name": "Liability",
+                            "groupby": "company_id",
+                            "expression_ids": [
+                                Command.create(
+                                    {
+                                        "label": "balance",
+                                        "engine": "domain",
+                                        "formula": "[('account_id.internal_group', '=', 'liability')]",
+                                        "subformula": "sum",
+                                    }
+                                ),
+                            ],
+                        }
+                    ),
+                ],
+            }
+        )
+        self.init_invoice(
+            "in_invoice",
+            company=self.company_eur_data["company"],
+            invoice_date="2020-12-22",
+            amounts=[42],
+            post=True,
+        )
+
+        options = self._generate_options(liability_report, "2020-01-01", "2020-12-31")
+        line_to_expand_id = liability_report._get_generic_line_id(
+            "account.report.line", liability_report.line_ids[0].id
+        )
+        self.assertLinesValues(
+            liability_report.get_expanded_lines(
+                options,
+                line_to_expand_id,
+                "company_id",
+                "_report_expand_unfoldable_line_with_groupby",
+                0,
+                0,
+                None,
+            ),
+            [0, 1],
+            [
+                # Payable balance is a credit (-42 EUR); converted at the 'current'
+                # rate (0.5), it must become -21.00, not the raw -42.00.
+                ("EUR Company 1", -21.00),
+            ],
+            options,
+        )
+
     def test_currency_table_closing_rate_manual_fiscal_year(self):
         self.env["account.fiscal.year"].create(
             [
