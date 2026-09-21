@@ -263,6 +263,11 @@ class GeneralLedgerCustomHandler(models.AbstractModel):
 
         # Affect the unaffected earnings to the first fetched account of type 'account.data_unaffected_earnings'.
         # It's less costly to fetch all candidate accounts in a single search and then iterate it.
+        # Order by 'id' (creation order) rather than the model's default
+        # 'code' order: the generic Odoo 19 CoA seeds two 'equity_unaffected'
+        # accounts per company ('Profit or Loss Appropriation' 999999 and
+        # 'Accumulated Retained Earnings' 999998), and 'code'-based ordering
+        # would pick the wrong one first ('999998' sorts before '999999').
         if groupby_companies:
             unaffected_earnings_accounts = self.env["account.account"].search(
                 [
@@ -271,13 +276,17 @@ class GeneralLedgerCustomHandler(models.AbstractModel):
                         list(groupby_companies.keys())
                     ),
                     ("account_type", "=", "equity_unaffected"),
-                ]
+                ],
+                order="id",
             )
             for company_id, groupby_company in groupby_companies.items():
-                if equity_unaffected_account := unaffected_earnings_accounts.filtered(
-                    lambda a: self.env["res.company"].browse(company_id).root_id
-                    in a.company_ids
-                ):
+                company = self.env["res.company"].browse(company_id)
+                candidates = unaffected_earnings_accounts.filtered(
+                    lambda a: company in a.company_ids
+                ) or unaffected_earnings_accounts.filtered(
+                    lambda a: company.root_id in a.company_ids
+                )
+                if equity_unaffected_account := candidates[:1]:
                     for column_group_key in options["column_groups"]:
                         groupby_accounts.setdefault(
                             equity_unaffected_account.id,
