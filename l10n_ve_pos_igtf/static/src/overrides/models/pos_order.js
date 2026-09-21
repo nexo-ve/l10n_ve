@@ -4,12 +4,15 @@ import { floatIsZero, roundPrecision } from "@web/core/utils/numbers";
 
 // Odoo 19 removed the order-level `taxTotals` getter; every total (priceIncl,
 // totalDue, the receipt, ...) now reads `order.prices.taxDetails` instead.
-// Capture the *unpatched* getter the same way this module used to for
-// `taxTotals`, so the IGTF surcharge is always computed against Odoo's own
-// numbers regardless of patch order relative to other l10n_ve_* modules.
-const posOrderPricesDescriptor = Object.getOwnPropertyDescriptor(PosOrder.prototype, "prices");
-const rawPricesGetter = posOrderPricesDescriptor.get;
-
+// `prices` itself is defined on the parent class PosOrderAccounting, not as
+// an own property of PosOrder.prototype, so
+// `Object.getOwnPropertyDescriptor(PosOrder.prototype, "prices")` (which does
+// NOT walk the prototype chain) returns undefined here unless some other
+// module has already patched `prices` onto PosOrder.prototype as an own
+// property first. Use a normal patch() with `super.prices` instead: `super`
+// correctly walks the prototype chain regardless of patch order, so this
+// composes correctly whether l10n_ve_loyalty_pos's own `prices` patch (the
+// manual global discount) is installed and loaded before or after this one.
 function l10nVePosCurrencyIdsSet(order) {
     const jsonIds = order.company?.l10n_ve_igtf_currency_pos_ids_json;
     if (jsonIds) {
@@ -71,7 +74,16 @@ patch(PosOrder.prototype, {
         let sumIgtf = 0;
         let sumBi = 0;
 
-        const baseTaxDetails = rawPricesGetter.call(this).taxDetails;
+        // NOTE: `super.prices` here resolves to whatever patched `prices` was
+        // installed on PosOrder.prototype *before* this module's own patch was
+        // applied (e.g. l10n_ve_loyalty_pos's manual-global-discount total, if
+        // that module's patch runs first). If l10n_ve_pos_igtf's patch instead
+        // runs first, `super.prices` only sees Odoo's core total and this base
+        // will not reflect an active manual discount. Both l10n_ve_loyalty_pos
+        // and l10n_ve_pos_igtf only depend on point_of_sale (no dependency
+        // between them), so their relative patch order is decided by the
+        // asset bundle, not declared here.
+        const baseTaxDetails = super.prices.taxDetails;
         const orderSign = baseTaxDetails.order_sign;
         const maxTotalWithTax = orderSign * baseTaxDetails.total_amount_no_rounding;
         const isReturn = maxTotalWithTax < 0;
@@ -147,7 +159,7 @@ patch(PosOrder.prototype, {
     // here is the underlying total; the due/change/rounding getters then
     // pick up the IGTF surcharge automatically.
     get prices() {
-        const base = rawPricesGetter.call(this);
+        const base = super.prices;
         const igtfExtra = this.igtf_amount || 0;
         if (
             !this.company?.l10n_ve_igtf_feature_active ||
