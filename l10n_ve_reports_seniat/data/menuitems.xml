@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <menuitem
+        id="menu_action_account_report_ve_report_x"
+        name="🇻🇪 Reporte X"
+        action="action_account_report_ve_report_x"
+        groups="account.group_account_readonly"
+        parent="l10n_ve_reports.account_reports_audit_reports_menu"
+        sequence="6"
+    />
+    <menuitem
+        id="menu_action_account_report_sales_book"
+        name="🇻🇪 Libro de Ventas"
+        action="action_account_report_sales_book"
+        groups="account.group_account_readonly"
+        parent="l10n_ve_reports.account_reports_audit_reports_menu"
+        sequence="7"
+    />
+    <menuitem
+        id="menu_action_account_report_sales_book_fiscal_machine"
+        name="🇻🇪 Libro de Ventas Maquina Fiscal"
+        action="action_account_report_sales_book_fiscal_machine"
+        groups="account.group_account_readonly"
+        parent="l10n_ve_reports.account_reports_audit_reports_menu"
+        sequence="8"
+    />
+    <menuitem
+        id="menu_action_account_report_purchases_book"
+        name="🇻🇪 Libro de Compras"
+        action="action_account_report_purchases_book"
+        groups="account.group_account_readonly"
+        parent="l10n_ve_reports.account_reports_audit_reports_menu"
+        sequence="9"
+    />
+</odoo>
