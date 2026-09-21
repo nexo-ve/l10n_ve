@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class PosOrder(models.Model):
@@ -41,13 +42,36 @@ class PosOrder(models.Model):
             return self.env["account.journal"]
         return origin.invoice_journal_id or origin.account_move.journal_id
 
+    def _l10n_ve_pos_effective_invoice_journal(self):
+        """Diario de facturación común a todos los pedidos del conjunto.
+
+        `_prepare_invoice_vals` puede recibir varios pedidos a la vez: el
+        core factura un grupo completo en un solo asiento cuando se usa la
+        facturación consolidada (asistente `pos.make.invoice`). Por eso el
+        diario debe resolverse para el grupo y no con `ensure_one()`.
+        """
+        journals = self.env["account.journal"]
+        for order in self:
+            journals |= (
+                order._l10n_ve_pos_refund_origin_journal()
+                or order.invoice_journal_id
+                or order.config_id.invoice_journal_id
+            )
+        if len(journals) > 1:
+            raise UserError(
+                _(
+                    "Los pedidos seleccionados usan diarios de facturación "
+                    "distintos, así que no pueden facturarse en un solo "
+                    "documento. Factúrelos por separado."
+                )
+            )
+        return journals
+
     def _prepare_invoice_vals(self):
         vals = super()._prepare_invoice_vals()
-        refund_journal = self._l10n_ve_pos_refund_origin_journal()
-        if refund_journal:
-            vals["journal_id"] = refund_journal.id
-        elif self.invoice_journal_id:
-            vals["journal_id"] = self.invoice_journal_id.id
+        journal = self._l10n_ve_pos_effective_invoice_journal()
+        if journal:
+            vals["journal_id"] = journal.id
         return vals
 
     def _l10n_ve_pos_lock_refund_invoice_journal(self):
