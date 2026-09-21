@@ -487,7 +487,7 @@ class TestReportEngines(TestAccountReportsCommon):
         account_tags = self.env["account.account.tag"]._load_records(
             [
                 {
-                    "xml_id": "account_reports.account_codes_engine_test_tag1",
+                    "xml_id": "l10n_ve_reports.account_codes_engine_test_tag1",
                     "noupdate": True,
                     "values": {
                         "name": "account_codes test tag 1",
@@ -495,7 +495,7 @@ class TestReportEngines(TestAccountReportsCommon):
                     },
                 },
                 {
-                    "xml_id": "account_reports.account_codes_engine_test_tag2",
+                    "xml_id": "l10n_ve_reports.account_codes_engine_test_tag2",
                     "noupdate": True,
                     "values": {
                         "name": "account_codes test tag 2",
@@ -556,25 +556,25 @@ class TestReportEngines(TestAccountReportsCommon):
         )
         test_line_13 = self._prepare_test_report_line(
             self._prepare_test_expression_account_codes(
-                rf"tag(account_reports.account_codes_engine_test_tag1) + tag({account_tags[1].id})"
+                rf"tag(l10n_ve_reports.account_codes_engine_test_tag1) + tag({account_tags[1].id})"
             ),
             groupby="account_id",
         )
         test_line_14 = self._prepare_test_report_line(
             self._prepare_test_expression_account_codes(
-                r"tag(account_reports.account_codes_engine_test_tag1)D"
+                r"tag(l10n_ve_reports.account_codes_engine_test_tag1)D"
             ),
             groupby="account_id",
         )
         test_line_15 = self._prepare_test_report_line(
             self._prepare_test_expression_account_codes(
-                r"tag(account_reports.account_codes_engine_test_tag1)C"
+                r"tag(l10n_ve_reports.account_codes_engine_test_tag1)C"
             ),
             groupby="account_id",
         )
         test_line_16 = self._prepare_test_report_line(
             self._prepare_test_expression_account_codes(
-                rf"tag(account_reports.account_codes_engine_test_tag1)\(101)D + 101003 + tag({account_tags[1].id})\(101)C"
+                rf"tag(l10n_ve_reports.account_codes_engine_test_tag1)\(101)D + 101003 + tag({account_tags[1].id})\(101)C"
             ),
             groupby="account_id",
         )

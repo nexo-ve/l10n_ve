@@ -852,9 +852,9 @@ class TestBudgetReport(TestAccountReportsCommon):
         )
         move.action_post()
         move.line_ids.flush_recordset()
-        profit_and_loss_report = self.env.ref("account_reports.profit_and_loss")
+        profit_and_loss_report = self.env.ref("l10n_ve_reports.profit_and_loss")
         line_id = self._get_basic_line_dict_id_from_report_line_ref(
-            "account_reports.account_financial_report_revenue0"
+            "l10n_ve_reports.account_financial_report_revenue0"
         )
         options = self._generate_options(
             profit_and_loss_report,

@@ -11,7 +11,7 @@ class TestCashFlowReport(TestAccountReportsCommon):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.report = cls.env.ref("account_reports.cash_flow_report")
+        cls.report = cls.env.ref("l10n_ve_reports.cash_flow_report")
 
         cls.misc_journal = cls.company_data["default_journal_misc"]
         cls.cash_journal = cls.company_data["default_journal_cash"]

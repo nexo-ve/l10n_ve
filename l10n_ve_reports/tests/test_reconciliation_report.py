@@ -193,7 +193,7 @@ class TestReconciliationReport(TestAccountReportsCommon):
         # ==== Report ====
 
         report = self.env.ref(
-            "account_reports.bank_reconciliation_report"
+            "l10n_ve_reports.bank_reconciliation_report"
         ).with_context(active_id=bank_journal.id, active_model=bank_journal._name)
 
         options = self._generate_options(report, "2016-01-02", "2016-01-02")
@@ -379,7 +379,7 @@ class TestReconciliationReport(TestAccountReportsCommon):
         # ==== Report ====
 
         report = self.env.ref(
-            "account_reports.bank_reconciliation_report"
+            "l10n_ve_reports.bank_reconciliation_report"
         ).with_context(active_id=bank_journal.id, active_model=bank_journal._name)
 
         with self.debug_mode():
@@ -535,7 +535,7 @@ class TestReconciliationReport(TestAccountReportsCommon):
         payment.action_post()
 
         report = self.env.ref(
-            "account_reports.bank_reconciliation_report"
+            "l10n_ve_reports.bank_reconciliation_report"
         ).with_context(active_id=bank_journal.id, active_model="account.journal")
 
         options = self._generate_options(
@@ -689,7 +689,7 @@ class TestReconciliationReport(TestAccountReportsCommon):
         # ==== Report ====
 
         report = self.env.ref(
-            "account_reports.bank_reconciliation_report"
+            "l10n_ve_reports.bank_reconciliation_report"
         ).with_context(active_id=bank_journal.id, active_model="account.journal")
 
         options = self._generate_options(report, "2016-01-02", "2016-01-02")
@@ -764,7 +764,7 @@ class TestReconciliationReport(TestAccountReportsCommon):
         ).action_post()
 
         report = self.env.ref(
-            "account_reports.bank_reconciliation_report"
+            "l10n_ve_reports.bank_reconciliation_report"
         ).with_context(active_id=bank_journal.id, active_model="account.journal")
 
         options = self._generate_options(report, "2016-01-02", "2016-01-02")
@@ -897,7 +897,7 @@ class TestReconciliationReport(TestAccountReportsCommon):
         )
 
         report = self.env.ref(
-            "account_reports.bank_reconciliation_report"
+            "l10n_ve_reports.bank_reconciliation_report"
         ).with_context(active_id=bank_journal.id, active_model="account.journal")
 
         options = self._generate_options(
@@ -1003,7 +1003,7 @@ class TestReconciliationReport(TestAccountReportsCommon):
         )
 
         report = self.env.ref(
-            "account_reports.bank_reconciliation_report"
+            "l10n_ve_reports.bank_reconciliation_report"
         ).with_context(active_id=bank_journal.id, active_model="account.journal")
         options = self._generate_options(report, "2019-01-01", "2019-01-12")
         options["all_entries"] = True

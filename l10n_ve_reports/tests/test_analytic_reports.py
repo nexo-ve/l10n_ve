@@ -11,7 +11,7 @@ class TestAnalyticReport(TestAccountReportsCommon):
         super().setUpClass()
 
         cls.env.user.group_ids += cls.env.ref("analytic.group_analytic_accounting")
-        cls.report = cls.env.ref("account_reports.profit_and_loss")
+        cls.report = cls.env.ref("l10n_ve_reports.profit_and_loss")
         cls.report.write({"filter_analytic": True})
 
         cls.analytic_plan_parent = cls.env["account.analytic.plan"].create(
@@ -573,7 +573,7 @@ class TestAnalyticReport(TestAccountReportsCommon):
         invoice.action_post()
         invoice.invoice_line_ids[0].analytic_distribution = {analytic_account.id: 100}
 
-        general_ledger_report = self.env.ref("account_reports.general_ledger_report")
+        general_ledger_report = self.env.ref("l10n_ve_reports.general_ledger_report")
         options = self._generate_options(
             general_ledger_report,
             "2023-01-01",

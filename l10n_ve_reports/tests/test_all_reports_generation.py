@@ -222,10 +222,10 @@ class TestAllReportsGeneration(AccountTestInvoicingCommon):
 
     def test_custom_engines_related_groupby(self):
         blacklist_xmlids = [
-            "account_reports.account_financial_report_executivesummary_avdebt0_ndays",
-            "account_reports.account_financial_report_executivesummary_avgcre0_ndays",
-            "account_reports.last_statement_balance_amount",
-            "account_reports.last_statement_balance_forced_currency_amount",
+            "l10n_ve_reports.account_financial_report_executivesummary_avdebt0_ndays",
+            "l10n_ve_reports.account_financial_report_executivesummary_avgcre0_ndays",
+            "l10n_ve_reports.last_statement_balance_amount",
+            "l10n_ve_reports.last_statement_balance_forced_currency_amount",
         ]
 
         custom_engine_expressions = self.env["account.report.expression"].search(

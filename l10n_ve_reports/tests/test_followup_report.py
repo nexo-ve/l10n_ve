@@ -11,7 +11,7 @@ class TestFollowupReport(TestAccountReportsCommon):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.report = cls.env.ref("account_reports.followup_report")
+        cls.report = cls.env.ref("l10n_ve_reports.followup_report")
         # Initiate Invoices
         invoices_data = [
             # Partner A invoices
