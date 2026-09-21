@@ -54,7 +54,8 @@ patch(PaymentScreen.prototype, {
     },
 
     _l10nVeOrderHasPayLaterRefundCredit(order) {
-        if (!order || order.get_total_with_tax() >= 0) {
+        // Odoo 19 replaced `get_total_with_tax()` with the `priceIncl` getter.
+        if (!order || order.priceIncl >= 0) {
             return false;
         }
         if (this._l10nVeRefundedOrderPaidOnCredit(order)) {
@@ -71,10 +72,10 @@ patch(PaymentScreen.prototype, {
             isVenezuelaCompany(this.pos) &&
             order &&
             isPayLaterNoJournal(paymentMethod) &&
-            order.get_total_with_tax() < 0 &&
+            order.priceIncl < 0 &&
             !this._l10nVeRefundedOrderPaidOnCredit(order)
         ) {
-            if (!order.get_partner()) {
+            if (!order.getPartner()) {
                 this.notification.add(
                     _t("Select a customer to credit the eWallet on refund."),
                     { type: "warning" }
@@ -94,7 +95,7 @@ patch(PaymentScreen.prototype, {
 
     async validateOrder(isForceValidate) {
         const order = this.currentOrder;
-        const partner = order?.get_partner?.();
+        const partner = order?.getPartner?.();
         const shouldRefreshEwallet =
             isVenezuelaCompany(this.pos) &&
             this._l10nVeOrderHasPayLaterRefundCredit(order) &&
