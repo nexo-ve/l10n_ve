@@ -943,7 +943,7 @@ class BankReconciliationReportCustomHandler(models.AbstractModel):
             "target": "current",
             "views": [(self.env.ref("account.view_move_line_tree").id, "list")],
             "domain": self.env[
-                "account.bank.reconciliation.report.handler"
+                "account.bank.reconciliation.report.handler.oca"
             ]._get_bank_miscellaneous_move_lines_domain(options, journal),
         }
 

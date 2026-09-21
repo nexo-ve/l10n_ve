@@ -1,5 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from . import test_account_move
 from . import test_account_reports_annotations_export
 from . import test_account_reports_filters
 from . import test_account_reports_journal_filter
@@ -20,6 +21,7 @@ from . import test_financial_report
 from . import test_followup_report
 from . import test_general_ledger_report
 from . import test_journal_report
+from . import test_model_name_literals
 from . import test_no_localization_dependency
 from . import test_partner_ledger_report
 from . import test_reconciliation_report

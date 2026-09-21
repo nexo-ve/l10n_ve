@@ -1821,9 +1821,9 @@ class JournalReportCustomHandler(models.AbstractModel):
         }
 
     def journal_report_action_dropdown_audit_default_tax_report(self, options, params):
-        return self.env["account.generic.tax.report.handler"].caret_option_audit_tax(
-            options, params
-        )
+        return self.env[
+            "account.generic.tax.report.handler.oca"
+        ].caret_option_audit_tax(options, params)
 
     def journal_report_action_open_tax_journal_items(self, options, params):
         """

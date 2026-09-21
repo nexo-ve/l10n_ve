@@ -2909,6 +2909,12 @@ class AccountReport(models.Model):
                 "balance": SQL.identifier("amount"),
                 "company_id": self.env.company.id,
                 "parent_state": "posted",
+                # Odoo 19 made display_type required (always 'product' for a
+                # regular line); leaving it NULL here made every shadow row
+                # silently vanish from any report domain using the standard
+                # `display_type not in (line_section, line_note)` exclusion,
+                # since SQL's `NULL NOT IN (...)` is NULL, not true.
+                "display_type": "product",
                 "date": SQL.identifier("date"),
                 "account_id": SQL.identifier("account_id"),
                 "debit": SQL("CASE WHEN (amount > 0) THEN amount else 0 END"),
@@ -2930,7 +2936,7 @@ class AccountReport(models.Model):
 
                 INSERT INTO account_report_budget_temp_aml (%(stored_aml_fields)s, budget_id)
                 SELECT %(fields_to_insert)s, budget_id
-                FROM account_report_budget_item
+                FROM account_report_budget_item_oca
                 WHERE budget_id IN %(available_budget_ids)s;
 
                 -- Create a supporting index to avoid seq.scans
@@ -2952,10 +2958,13 @@ class AccountReport(models.Model):
             ]._prepare_aml_shadowing_for_report(
                 {
                     # Using nextval will consume a sequence number, we decide to do it to avoid comparing apples and oranges
-                    "id": SQL("(SELECT nextval('account_report_budget_item_id_seq'))"),
+                    "id": SQL(
+                        "(SELECT nextval('account_report_budget_item_oca_id_seq'))"
+                    ),
                     "balance": SQL("0"),
                     "company_id": self.env.company.id,
                     "parent_state": "posted",
+                    "display_type": "product",
                     "date": SQL("%s", options["date"]["date_from"]),
                     "account_id": SQL.identifier("accounts", "id"),
                     "debit": SQL("0"),
@@ -2978,7 +2987,7 @@ class AccountReport(models.Model):
                        FROM (%(accounts_subquery)s) AS accounts
                  CROSS JOIN (
                                 SELECT id
-                                  FROM account_report_budget
+                                  FROM account_report_budget_oca
                                  WHERE id IN %(available_budget_ids)s
                             ) AS budgets
                 """,

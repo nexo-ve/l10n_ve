@@ -183,7 +183,7 @@ class AccountMove(models.Model):
         if sender_company == self.company_id:
             depending_closings = (
                 self.env[
-                    "account.tax.report.handler"
+                    "account.tax.report.handler.oca"
                 ]._get_tax_closing_entries_for_closed_period(
                     report,
                     options,
@@ -357,7 +357,8 @@ class AccountMove(models.Model):
                 move.company_id, move.fiscal_position_id, report, move.date
             )
             self.env[
-                report.custom_handler_model_name or "account.generic.tax.report.handler"
+                report.custom_handler_model_name
+                or "account.generic.tax.report.handler.oca"
             ]._generate_tax_closing_entries(report, options, closing_moves=move)
 
     @api.model

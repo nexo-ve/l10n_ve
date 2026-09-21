@@ -1,7 +1,7 @@
 # pylint: disable=C0326
 import unittest
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.tests import tagged
 
 from .common import TestAccountReportsCommon
@@ -901,4 +901,62 @@ class TestJournalReport(TestAccountReportsCommon):
                     ],
                 },
             ],
+        )
+
+
+@tagged("post_install", "-at_install")
+class TestJournalReportAuditTax(TestAccountReportsCommon):
+    """Kept as a standalone class (not part of TestJournalReport, which is
+    entirely skipped pending the payment_state port) so this coverage runs
+    on the generic-only install today."""
+
+    def test_journal_report_action_dropdown_audit_default_tax_report(self):
+        """The Journal Report's audit-default-tax-report caret option must
+        resolve the generic tax report handler
+        (models/account_journal_report.py:1824) and redirect to the move
+        lines affected by the audited tax.
+        """
+        invoice = self.init_invoice(
+            "out_invoice",
+            invoice_date="2019-01-01",
+            amounts=[1000],
+            taxes=self.tax_sale_a,
+            post=True,
+        )
+        base_line = invoice.line_ids.filtered(
+            lambda line: self.tax_sale_a in line.tax_ids
+            and not line.tax_repartition_line_id
+        )
+        tax_line = invoice.line_ids.filtered(
+            lambda line: line.tax_line_id == self.tax_sale_a
+        )
+        expected_lines = base_line + tax_line
+        self.assertEqual(
+            len(expected_lines),
+            2,
+            "the invoice must carry one base line and one tax line for the audited tax",
+        )
+
+        report = self.env.ref("l10n_ve_reports.journal_report")
+        options = self._generate_options(
+            report,
+            fields.Date.from_string("2019-01-01"),
+            fields.Date.from_string("2019-01-01"),
+        )
+        params = {
+            "line_id": report._get_generic_line_id(
+                "account.tax", self.tax_sale_a.id
+            )
+        }
+
+        action = self.env[
+            "account.journal.report.handler.oca"
+        ].journal_report_action_dropdown_audit_default_tax_report(options, params)
+
+        audited_lines = self.env["account.move.line"].search(action["domain"])
+        self.assertEqual(
+            set(audited_lines.ids),
+            set(expected_lines.ids),
+            "the caret option must redirect to exactly the move lines tied "
+            "to the audited tax",
         )

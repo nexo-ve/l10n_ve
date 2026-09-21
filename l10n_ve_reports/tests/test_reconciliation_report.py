@@ -1084,3 +1084,30 @@ class TestReconciliationReport(TestAccountReportsCommon):
             currency_map={3: {"currency": bank_journal.currency_id}},
             ignore_folded=False,
         )
+
+    def test_bank_reconciliation_report_open_bank_miscellaneous_move_lines(self):
+        """open_bank_miscellaneous_move_lines must resolve the bank
+        reconciliation report handler itself
+        (models/bank_reconciliation_report.py:945-946) and return a
+        well-formed domain scoped to the journal's default account.
+        """
+        report = self.env.ref("l10n_ve_reports.bank_reconciliation_report")
+        journal = self.company_data["default_journal_bank"]
+        self.assertTrue(
+            journal.default_account_id,
+            "the bank journal fixture must have a default account",
+        )
+        options = self._generate_options(report, "2016-01-01", "2016-01-02")
+        options["bank_reconciliation_report_journal_id"] = journal.id
+
+        action = self.env[
+            "account.bank.reconciliation.report.handler.oca"
+        ].open_bank_miscellaneous_move_lines(options)
+
+        domain = action["domain"]
+        self.assertIsInstance(domain, list)
+        self.assertIn(
+            ("account_id", "=", journal.default_account_id.id),
+            domain,
+            "the domain must scope move lines to the journal's default account",
+        )

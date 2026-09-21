@@ -110,6 +110,8 @@ class ResPartner(models.Model):
         remaining_vats = [
             pvat for pvat in duplicated_partners_vat if pvat != main_partner.vat
         ]
-        return self.env["account.ec.sales.report.handler"]._get_duplicated_vat_partners(
+        return self.env[
+            "account.ec.sales.report.handler.oca"
+        ]._get_duplicated_vat_partners(
             remaining_vats
         )
