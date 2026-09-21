@@ -8,7 +8,17 @@
                     <div class="payment-infos d-flex align-items-center justify-content-between flex-grow-1 px-3 py-3 text-truncate cursor-pointer fs-2" t-on-click="() => this.selectLine(line)">
                         <span class="payment-name"><t t-esc="line.payment_method_id.name"/></span>
                         <div class="payment-amount px-3 text-end">
-                            <t t-if="line.isForeignCurrencyPayment and line.isForeignCurrencyPayment()">
+                            <!-- currency_pos's own PaymentScreenPaymentLines extension
+                                 (payment_screen.xml) replaces this same inner div to show
+                                 the foreign-currency amount alongside the order-currency
+                                 one; this module's extension replaces the whole outer
+                                 container, which was silently erasing that. Reuse
+                                 currency_pos's own helpers here so both compose, falling
+                                 back to the core PriceFormatter markup if currency_pos is
+                                 not installed (isForeignCurrencyPayment is one of its
+                                 model patches, so it is simply absent, not throwing, in
+                                 that case). -->
+                            <t t-if="line.isForeignCurrencyPayment?.()">
                                 <div class="lh-sm">
                                     <t t-esc="getPaymentLineForeignAmountDisplay(line)"/>
                                 </div>
@@ -17,7 +27,7 @@
                                 </div>
                             </t>
                             <t t-else="">
-                                <t t-esc="getPaymentLineOrderAmountDisplay(line)"/>
+                                <PriceFormatter price="env.utils.formatCurrency(line.getAmount())" />
                             </t>
                         </div>
                     </div>
@@ -52,7 +62,9 @@
                     <div class="payment-infos d-flex align-items-center justify-content-between flex-grow-1 px-3 py-3 text-truncate cursor-pointer fs-2" t-on-click="() => this.selectLine(line)">
                         <span class="payment-name"><t t-esc="line.payment_method_id.name"/></span>
                         <div class="payment-amount px-3 text-end">
-                            <t t-if="line.isForeignCurrencyPayment and line.isForeignCurrencyPayment()">
+                            <!-- Same currency_pos-composition fix as the selected-line
+                                 block above; see the comment there. -->
+                            <t t-if="line.isForeignCurrencyPayment?.()">
                                 <div class="lh-sm">
                                     <t t-esc="getPaymentLineForeignAmountDisplay(line)"/>
                                 </div>
@@ -61,7 +73,7 @@
                                 </div>
                             </t>
                             <t t-else="">
-                                <t t-esc="getPaymentLineOrderAmountDisplay(line)"/>
+                                <PriceFormatter price="env.utils.formatCurrency(line.getAmount())" />
                             </t>
                         </div>
                     </div>

@@ -7,9 +7,10 @@ class ResCurrency(models.Model):
     _inherit = "res.currency"
 
     @api.model
-    def _load_pos_data_domain(self, data):
-        domain = super()._load_pos_data_domain(data)
-        config = self.env["pos.config"].browse(data["pos.config"]["data"][0]["id"])
+    def _load_pos_data_domain(self, data, config):
+        # Odoo 19's pos.load.mixin passes `config` directly; no more need to
+        # re-browse it from the already-loaded `data["pos.config"]` payload.
+        domain = super()._load_pos_data_domain(data, config)
         company = config.company_id
         is_ve = (company.country_id.code == "VE") or (
             company.account_fiscal_country_id.code == "VE"

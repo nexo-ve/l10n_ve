@@ -7,7 +7,10 @@
         <xpath expr="//div[contains(@class, 'pos-receipt-container') and contains(@class, 'd-flex') and contains(@class, 'flex-grow-1')]" position="attributes">
             <attribute name="t-if">!isVenezuelaPos</attribute>
         </xpath>
-        <xpath expr="//div[hasclass('o_payment_successful')]/hr" position="after">
+        <!-- Odoo 19 removed the <hr/> that used to separate the success badge
+             from the receipt options; anchor on the receipt-options div itself
+             instead, injecting right before it (same visual position). -->
+        <xpath expr="//div[hasclass('o_payment_successful')]/div[hasclass('receipt-options')]" position="before">
             <div t-if="l10nVeShowReceiptInvoiceDetails" class="w-100 text-start small mt-2">
                 <div t-if="l10nVeJournalEmissionMedium === 'free'">
                     <div>

@@ -3,7 +3,7 @@ import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
-import { usePos } from "@point_of_sale/app/store/pos_hook";
+import { usePos } from "@point_of_sale/app/hooks/pos_hook";
 
 const EXCHANGE_RATES_RPC_KEY = "l10n_ve_pos_exchange_rates_rpc";
 const EXCHANGE_RATES_DATA_KEY = "l10n_ve_pos_exchange_rates_data";

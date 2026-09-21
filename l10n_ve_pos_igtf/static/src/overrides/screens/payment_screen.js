@@ -6,7 +6,7 @@ import { floatIsZero } from "@web/core/utils/numbers";
 patch(PaymentScreen.prototype, {
     get l10nVePosShowIgtf() {
         const order = this.currentOrder;
-        if (!order?.company?.l10n_ve_igtf_feature_active || !order.is_to_invoice?.()) {
+        if (!order?.company?.l10n_ve_igtf_feature_active || !order.isToInvoice?.()) {
             return false;
         }
         return !floatIsZero(order.igtf_amount || 0, order.currency.decimal_places);
@@ -21,8 +21,9 @@ patch(PaymentScreen.prototype, {
     },
 
     get l10nVePosTotalWithoutIgtfText() {
+        // Odoo 19 replaced the `getTotalDue()` method with the `totalDue` getter.
         const order = this.currentOrder;
-        const total = (order?.getTotalDue?.() || 0) - (order?.igtf_amount || 0);
+        const total = (order?.totalDue || 0) - (order?.igtf_amount || 0);
         return this.env.utils.formatCurrency(total);
     },
 

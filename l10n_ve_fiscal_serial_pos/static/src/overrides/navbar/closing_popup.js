@@ -1,12 +1,12 @@
 /** @odoo-module **/
 
 import { onWillStart, useState } from "@odoo/owl";
-import { ClosePosPopup } from "@point_of_sale/app/navbar/closing_popup/closing_popup";
+import { ClosePosPopup } from "@point_of_sale/app/components/popups/closing_popup/closing_popup";
 import { patch } from "@web/core/utils/patch";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
-import { SelectionPopup } from "@point_of_sale/app/utils/input_popups/selection_popup";
-import { makeAwaitable } from "@point_of_sale/app/store/make_awaitable_dialog";
+import { SelectionPopup } from "@point_of_sale/app/components/popups/selection_popup/selection_popup";
+import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { l10nVeFiscalSerialExecuteReport } from "@l10n_ve_fiscal_serial/fiscal_serial/fiscal_serial_report";
 import {
     l10nVeFiscalSerialPosGetFiscalMachineId,

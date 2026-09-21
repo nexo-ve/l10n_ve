@@ -1,5 +1,4 @@
 import { PosOrderline } from "@point_of_sale/app/models/pos_order_line";
-import { getTaxesAfterFiscalPosition } from "@point_of_sale/app/models/utils/tax_utils";
 import { patch } from "@web/core/utils/patch";
 
 const TAX_LETTER_BY_RATE = [
@@ -49,7 +48,9 @@ function isVenezuelaPriceOnlyProduct(line) {
 }
 
 patch(PosOrderline.prototype, {
-    set_quantity(quantity, keep_price) {
+    // Odoo 19 renamed `set_quantity`/`get_quantity`/`assert_editable` to
+    // camelCase on PosOrderline/PosOrder.
+    setQuantity(quantity, keep_price) {
         if (
             isVenezuelaCompany(this.order_id) &&
             isVenezuelaPriceOnlyProduct(this) &&
@@ -63,16 +64,16 @@ patch(PosOrderline.prototype, {
                 quantity = Math.sign(quant) || 1;
             }
         }
-        return super.set_quantity(quantity, keep_price);
+        return super.setQuantity(quantity, keep_price);
     },
     merge(orderline) {
         if (
             isVenezuelaCompany(this.order_id) &&
             isVenezuelaPriceOnlyProduct(this)
         ) {
-            this.order_id.assert_editable();
-            if (Math.abs(this.get_quantity()) !== 1) {
-                this.set_quantity(Math.sign(this.get_quantity()) || 1, true);
+            this.order_id.assertEditable();
+            if (Math.abs(this.getQuantity()) !== 1) {
+                this.setQuantity(Math.sign(this.getQuantity()) || 1, true);
             }
             return;
         }
@@ -83,13 +84,10 @@ patch(PosOrderline.prototype, {
         if (!taxes?.length) {
             return [];
         }
-        return (
-            getTaxesAfterFiscalPosition(
-                taxes,
-                this.order_id?.fiscal_position_id,
-                this.models
-            ) || []
-        );
+        // Odoo 19 moved `getTaxesAfterFiscalPosition` from a standalone util
+        // to a method on the fiscal position record itself.
+        const fiscalPosition = this.order_id?.fiscal_position_id;
+        return (fiscalPosition ? fiscalPosition.getTaxesAfterFiscalPosition(taxes) : taxes) || [];
     },
     _l10nVeGetTaxLetter() {
         if (!isVenezuelaCompany(this.order_id)) {
@@ -107,16 +105,18 @@ patch(PosOrderline.prototype, {
         const taxed = taxes.find((tax) => !rateMatches(tax.amount, 0));
         return taxed ? getTaxLetterFromAmount(taxed.amount) : "E";
     },
-    set_full_product_name() {
-        super.set_full_product_name(...arguments);
+    // Odoo 19 replaced `set_full_product_name`/`get_full_product_name` with
+    // `setFullProductName`/`getFullProductName`.
+    setFullProductName() {
+        super.setFullProductName(...arguments);
         this.full_product_name = appendTaxLetter(
             this.full_product_name,
             this._l10nVeGetTaxLetter()
         );
     },
-    get_full_product_name() {
+    getFullProductName() {
         return appendTaxLetter(
-            super.get_full_product_name(...arguments),
+            super.getFullProductName(...arguments),
             this._l10nVeGetTaxLetter()
         );
     },

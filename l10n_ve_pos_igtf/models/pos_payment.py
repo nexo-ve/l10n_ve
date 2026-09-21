@@ -1,4 +1,4 @@
-from odoo import _, fields, models
+from odoo import api, _, fields, models
 from odoo.tools import float_is_zero, float_round
 
 
@@ -8,6 +8,24 @@ class PosPayment(models.Model):
     include_igtf = fields.Boolean()
     igtf_amount = fields.Float()
     foreign_igtf_amount = fields.Float()
+
+    @api.model
+    def _load_pos_data_fields(self, config):
+        fields_list = super()._load_pos_data_fields(config)
+        # An empty list means "load every field" (record.read([]) reads all
+        # stored fields), which already includes these three; only append
+        # when some other override (e.g. currency_pos's, which replaces an
+        # empty pos.payment field list with an explicit one) narrowed the
+        # list to an explicit subset -- otherwise l10n_ve_pos_updateIgtf()'s
+        # pl.update({include_igtf: ...}) calls fail with "field does not
+        # exist" client-side, since Odoo 19 validates update() calls against
+        # the field list the client actually knows about.
+        if not fields_list:
+            return fields_list
+        for field_name in ("include_igtf", "igtf_amount", "foreign_igtf_amount"):
+            if field_name not in fields_list:
+                fields_list.append(field_name)
+        return fields_list
 
     def _l10n_ve_pos_payment_applies_igtf_by_currency(self):
         self.ensure_one()

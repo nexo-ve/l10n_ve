@@ -15,7 +15,7 @@ patch(OrderSummary.prototype, {
         return Boolean(line?.product_id?.l10n_ve_pos_allow_price_change);
     },
     async updateSelectedOrderline({ buffer, key }) {
-        const selectedLine = this.pos.get_order()?.get_selected_orderline();
+        const selectedLine = this.pos.getOrder()?.getSelectedOrderline();
         if (
             isVenezuelaCompany(this.pos) &&
             selectedLine &&
@@ -36,7 +36,7 @@ patch(OrderSummary.prototype, {
         return line.combo_parent_id || line;
     },
     _veNumpadDecreaseLineQty(root) {
-        const q = root.get_quantity();
+        const q = root.getQuantity();
         if (this.pos.isProductQtyZero(q)) {
             this.currentOrder.removeOrderline(root);
             this.numberBuffer.reset();
@@ -55,9 +55,9 @@ patch(OrderSummary.prototype, {
         if (remove) {
             this.currentOrder.removeOrderline(root);
         } else {
-            const result = root.set_quantity(newQ, Boolean(root.combo_line_ids?.length));
+            const result = root.setQuantity(newQ, Boolean(root.combo_line_ids?.length));
             for (const cl of root.combo_line_ids ?? []) {
-                cl.set_quantity(newQ, true);
+                cl.setQuantity(newQ, true);
             }
             if (result !== true) {
                 this.dialog.add(AlertDialog, result);
@@ -65,19 +65,14 @@ patch(OrderSummary.prototype, {
         }
         this.numberBuffer.reset();
     },
-    handleOrderLineQuantityChange(selectedLine, buffer, currentQuantity, lastId) {
-        if (
-            isVenezuelaCompany(this.pos) &&
-            this._veIsPriceOnlyLine(selectedLine)
-        ) {
-            this.numberBuffer.reset();
-            this.pos.numpadMode = "price";
-            return;
-        }
-        return super.handleOrderLineQuantityChange(...arguments);
-    },
+    // `handleOrderLineQuantityChange` was removed in Odoo 19: the
+    // `disallowLineQuantityChange` branch now always opens the quantity
+    // popup directly. This override was already unreachable for
+    // price-only lines because `updateSelectedOrderline` above short-circuits
+    // before that branch is ever evaluated, so it is dropped instead of
+    // patching a method that no longer exists.
     async updateQuantityNumber(newQuantity) {
-        const selectedLine = this.currentOrder.get_selected_orderline();
+        const selectedLine = this.currentOrder.getSelectedOrderline();
         if (
             isVenezuelaCompany(this.pos) &&
             this._veIsPriceOnlyLine(selectedLine)
@@ -90,7 +85,7 @@ patch(OrderSummary.prototype, {
     },
     _setValue(val) {
         const { numpadMode } = this.pos;
-        const selectedLine = this.currentOrder.get_selected_orderline();
+        const selectedLine = this.currentOrder.getSelectedOrderline();
         if (selectedLine) {
             const root = this._veResolveComboParent(selectedLine);
             const priceOnly = this._veIsPriceOnlyLine(root);

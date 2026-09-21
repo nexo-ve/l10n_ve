@@ -10,8 +10,8 @@ import {
 } from "@odoo/owl";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { useService } from "@web/core/utils/hooks";
-import { usePos } from "@point_of_sale/app/store/pos_hook";
-import { Navbar } from "@point_of_sale/app/navbar/navbar";
+import { usePos } from "@point_of_sale/app/hooks/pos_hook";
+import { Navbar } from "@point_of_sale/app/components/navbar/navbar";
 import { patch } from "@web/core/utils/patch";
 import { CONNECTION_STATUS } from "@l10n_ve_fiscal_serial/fiscal_connection/fiscal_connection_service";
 import {
@@ -178,7 +178,7 @@ Navbar.components = {
 
 function _posFiscalSystrayJournal(pos) {
     void pos.selectedOrderUuid;
-    const order = typeof pos.get_order === "function" ? pos.get_order() : null;
+    const order = typeof pos.getOrder === "function" ? pos.getOrder() : null;
     const journal = order?.invoice_journal_id || pos.config?.invoice_journal_id || false;
     void journal?.id;
     void journal?.l10n_ve_emission_medium;

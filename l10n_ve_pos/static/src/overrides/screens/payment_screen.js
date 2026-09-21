@@ -1,4 +1,5 @@
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
+import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
 import { onMounted, useState } from "@odoo/owl";
@@ -115,30 +116,14 @@ patch(PaymentScreen.prototype, {
         }
         return this.l10nVeEmission.journal_display_name || _t("Select journal");
     },
-    async afterOrderValidation() {
-        if (isVenezuelaCompany(this.pos)) {
-            this.pos.showScreen("ReceiptScreen");
-            if (!this.pos.config.module_pos_restaurant) {
-                this.pos.checkPreparationStateAndSentOrderInPreparation(this.currentOrder);
-            }
-            return;
-        }
-        await super.afterOrderValidation(...arguments);
-    },
-    toggleIsToInvoice() {
+    async toggleIsToInvoice() {
         if (isVenezuelaCompany(this.pos)) {
             return;
         }
-        super.toggleIsToInvoice(...arguments);
-    },
-    shouldDownloadInvoice() {
-        if (isVenezuelaCompany(this.pos)) {
-            return false;
-        }
-        return super.shouldDownloadInvoice(...arguments);
+        return super.toggleIsToInvoice(...arguments);
     },
     get l10nVeShowPaymentEmissionPanel() {
-        if (!this.isVenezuelaPos || !this.currentOrder?.is_to_invoice?.()) {
+        if (!this.isVenezuelaPos || !this.currentOrder?.isToInvoice?.()) {
             return false;
         }
         return ["free", "fiscal_machine", "digital"].includes(
@@ -192,6 +177,41 @@ patch(PaymentScreen.prototype, {
         if (!this.currentOrder) {
             return this.env.utils.formatCurrency(0);
         }
-        return this.env.utils.formatCurrency(this.currentOrder.get_total_without_tax());
+        // Odoo 19 replaced `get_total_without_tax()` with the `priceExcl` getter.
+        return this.env.utils.formatCurrency(this.currentOrder.priceExcl);
+    },
+});
+
+// Odoo 19 extracted order-validation behavior (previously implemented
+// directly on PaymentScreen: `afterOrderValidation`, `shouldDownloadInvoice`,
+// screen navigation) into a standalone `OrderPaymentValidation` helper class,
+// since quick order validation can now happen outside the payment screen too.
+// `afterOrderValidation` itself already runs
+// `checkPreparationStateAndSentOrderInPreparation` unconditionally (matching
+// what this module used to do for Venezuela), so only the screen-navigation
+// and auto-print decisions need overriding here.
+patch(OrderPaymentValidation.prototype, {
+    get nextPage() {
+        if (isVenezuelaCompany(this.pos) && !this.error) {
+            // Venezuelan fiscal requirements need the full ReceiptScreen
+            // (invoice/control numbers, etc.), never the quick FeedbackScreen.
+            return {
+                page: "ReceiptScreen",
+                params: { orderUuid: this.order.uuid },
+            };
+        }
+        return super.nextPage;
+    },
+    get canPrintReceipt() {
+        if (isVenezuelaCompany(this.pos)) {
+            return false;
+        }
+        return super.canPrintReceipt;
+    },
+    shouldDownloadInvoice() {
+        if (isVenezuelaCompany(this.pos)) {
+            return false;
+        }
+        return super.shouldDownloadInvoice(...arguments);
     },
 });

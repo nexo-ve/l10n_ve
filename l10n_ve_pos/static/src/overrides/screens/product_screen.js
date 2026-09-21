@@ -9,7 +9,8 @@ function isVenezuelaCompany(pos) {
 }
 
 function selectedLineAllowsPriceChange(pos) {
-    const line = pos.get_order()?.get_selected_orderline();
+    // Odoo 19 renamed `get_order`/`get_selected_orderline` to camelCase.
+    const line = pos.getOrder()?.getSelectedOrderline();
     return Boolean(line?.product_id?.l10n_ve_pos_allow_price_change);
 }
 

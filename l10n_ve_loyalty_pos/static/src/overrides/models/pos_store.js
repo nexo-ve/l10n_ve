@@ -1,7 +1,7 @@
 /** @odoo-module **/
 
 import { patch } from "@web/core/utils/patch";
-import { PosStore } from "@point_of_sale/app/store/pos_store";
+import { PosStore } from "@point_of_sale/app/services/pos_store";
 
 function isVenezuelaCompany(pos) {
     return (
@@ -12,7 +12,7 @@ function isVenezuelaCompany(pos) {
 
 patch(PosStore.prototype, {
     getPotentialFreeProductRewards() {
-        const order = this.get_order();
+        const order = this.getOrder();
         if (!order?.uiState) {
             return [];
         }
@@ -76,7 +76,7 @@ patch(PosStore.prototype, {
 
     async selectPartner(partner) {
         const res = await super.selectPartner(...arguments);
-        const selected = this.get_order()?.get_partner?.() || partner;
+        const selected = this.getOrder()?.getPartner?.() || partner;
         if (selected?.id) {
             await this._l10nVeRefreshPartnerEwalletCards(selected.id);
             if (typeof this.updateRewards === "function") {

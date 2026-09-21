@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
+import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 import { patch } from "@web/core/utils/patch";
 import {
     l10nVeFiscalSerialPosExecutePrint,
@@ -57,7 +58,7 @@ patch(PaymentScreen.prototype, {
             return false;
         }
         const order = this.currentOrder;
-        if (!order?.is_to_invoice()) {
+        if (!order?.isToInvoice()) {
             return false;
         }
         if (
@@ -110,7 +111,7 @@ patch(PaymentScreen.prototype, {
 
     async validateOrder(isForceValidate) {
         if (
-            this.currentOrder.is_paid() &&
+            this.currentOrder.isPaid() &&
             this._l10nVeFiscalSerialAwaitingFiscalPrint()
         ) {
             const ok = await this._l10nVeFiscalSerialPrintCurrentOrder();
@@ -121,15 +122,42 @@ patch(PaymentScreen.prototype, {
         }
         return super.validateOrder(isForceValidate);
     },
+});
 
-    async afterOrderValidation(...args) {
-        if (this._l10nVeFiscalSerialAwaitingFiscalPrint()) {
-            const ok = await this._l10nVeFiscalSerialPrintCurrentOrder();
+// Odoo 19 moved `afterOrderValidation` off PaymentScreen and onto the new
+// `OrderPaymentValidation` helper class (see the `l10n_ve_pos` payment_screen
+// override for context on this refactor). `validateOrder` above still runs
+// on PaymentScreen and blocks the click until fiscal printing succeeds
+// (setting `l10n_ve_pos_fiscal_invoice_number` on the order), so this is
+// only a defensive fallback for paths that reach `afterOrderValidation`
+// without going through PaymentScreen.validateOrder first (e.g. the
+// ConnectionLostError recovery path). It re-checks the order's own fiscal
+// fields rather than duplicating the PaymentScreen-scoped print-succeeded
+// cache, since `this` here is the OrderPaymentValidation instance, not the
+// PaymentScreen component.
+patch(OrderPaymentValidation.prototype, {
+    _l10nVeFiscalSerialNeedsPrint() {
+        if (!l10nVeFiscalSerialPosIsFiscalMachine(this.pos)) {
+            return false;
+        }
+        const order = this.order;
+        if (!order?.isToInvoice()) {
+            return false;
+        }
+        return !(order.l10n_ve_pos_fiscal_invoice_number || order.raw?.l10n_ve_pos_fiscal_invoice_number);
+    },
+    async afterOrderValidation() {
+        if (this._l10nVeFiscalSerialNeedsPrint()) {
+            const ok = await l10nVeFiscalSerialPosExecutePrint({
+                pos: this.pos,
+                env: this.pos.env,
+                orderId: this.order.id,
+                order: this.order,
+            });
             if (!ok) {
                 return;
             }
-            this._l10nVeFiscalSerialMarkPrintSucceeded();
         }
-        return super.afterOrderValidation(...args);
+        return super.afterOrderValidation(...arguments);
     },
 });

@@ -3,7 +3,7 @@
 import { PosOrder } from "@point_of_sale/app/models/pos_order";
 import { patch } from "@web/core/utils/patch";
 import { floatIsZero, roundPrecision } from "@web/core/utils/numbers";
-import { lt, uuidv4 } from "@point_of_sale/utils";
+import { uuidv4 } from "@point_of_sale/utils";
 import { accountTaxHelpers } from "@account/helpers/account_tax";
 import { _t } from "@web/core/l10n/translation";
 
@@ -92,8 +92,8 @@ patch(PosOrder.prototype, {
     _l10nVeGetEwalletSpendAmount({ withTax = true } = {}) {
         const amount = this._l10nVeGetEwalletSpendLines().reduce((sum, line) => {
             const lineAmount = withTax
-                ? Math.abs(Number(line.get_price_with_tax?.() ?? line.price_subtotal_incl ?? 0))
-                : Math.abs(Number(line.get_price_without_tax?.() ?? line.price_subtotal ?? 0));
+                ? Math.abs(Number(line.priceIncl))
+                : Math.abs(Number(line.priceExcl));
             return sum + lineAmount;
         }, 0);
         return this._l10nVeRoundInCurrency(amount, this._l10nVeGetOrderCurrency());
@@ -203,26 +203,30 @@ patch(PosOrder.prototype, {
     _l10nVeGetProductLinesForDiscount() {
         return this.lines.filter(
             (line) =>
-                line.get_quantity() &&
+                line.getQuantity() &&
                 !line.is_reward_line &&
                 !line.l10n_ve_global_discount
         );
     },
 
     _l10nVeGetDiscountablePerTax() {
+        // NOTE: this is called (via _l10nVeGetEffectiveManualGlobalDiscounts)
+        // from the `prices` getter override below, which itself computes
+        // order.prices.taxDetails. Line-level getters that go back through
+        // `order.prices` (like `priceIncl`) would recurse infinitely here, so
+        // the with-tax estimate is derived from `basePrice` and the line's own
+        // tax rates instead of `line.priceIncl`.
         let discountable = 0;
         const discountablePerTax = {};
         for (const line of this._l10nVeGetProductLinesForDiscount()) {
             const taxes = Array.isArray(line.tax_ids) ? line.tax_ids : [];
-            const taxKey = taxes
-                .filter((tax) => tax && tax.amount_type !== "fixed")
-                .map((tax) => tax.id)
-                .join(",");
-            discountable += line.get_price_with_tax();
+            const taxIds = taxes.filter((tax) => tax && tax.amount_type !== "fixed").map((tax) => tax.id);
+            const taxKey = taxIds.join(",");
+            discountable += line.basePrice * this._l10nVeTaxesTotalFactor(taxIds);
             if (!discountablePerTax[taxKey]) {
                 discountablePerTax[taxKey] = 0;
             }
-            discountablePerTax[taxKey] += line.get_base_price();
+            discountablePerTax[taxKey] += line.basePrice;
         }
         return { discountable, discountablePerTax };
     },
@@ -405,7 +409,7 @@ patch(PosOrder.prototype, {
         const reward = args.reward;
         const coupon_id = args.coupon_id;
         let { discountable, discountablePerTax } = this._l10nVeGetDiscountablePerTax();
-        discountable = Math.min(this.get_total_with_tax(), discountable);
+        discountable = Math.min(this.priceIncl, discountable);
         if (floatIsZero(discountable)) {
             return [];
         }
@@ -530,11 +534,11 @@ patch(PosOrder.prototype, {
         const currency = this.config.currency_id;
         const company = this.company;
         const orderLines = this.lines;
-        const documentSign =
-            this.lines.length === 0 ||
-            !this.lines.every((line) => lt(line.qty, 0, { decimals: currency.decimal_places }))
-                ? 1
-                : -1;
+        // Odoo 19 removed the `lt()` float comparator from `@point_of_sale/utils`
+        // and exposes the same "is this a refund document" decision as the
+        // `isRefund` getter (used internally by PosOrder's own price
+        // computation for the same sign-flip purpose).
+        const documentSign = this.isRefund ? -1 : 1;
 
         const baseLines = orderLines.map((line) =>
             accountTaxHelpers.prepare_base_line_for_taxes_computation(
@@ -549,8 +553,11 @@ patch(PosOrder.prototype, {
         accountTaxHelpers.add_tax_details_in_base_lines(baseLines, company);
         accountTaxHelpers.round_base_lines_tax_details(baseLines, company);
 
+        // Same condition PosOrderAccounting._computeAllPrices() uses in Odoo 19
+        // (core no longer gates this on only_round_cash_method; that field only
+        // decides which total field `totalDue`/hasCashRounding read below).
         const cashRounding =
-            !this.config.only_round_cash_method && this.config.cash_rounding
+            this.config.cash_rounding && this.config.rounding_method
                 ? this.config.rounding_method
                 : null;
 
@@ -558,39 +565,21 @@ patch(PosOrder.prototype, {
             cash_rounding: cashRounding,
         });
 
+        // `order_sign` and `total_amount_no_rounding` are NOT part of
+        // get_tax_totals_summary()'s own output: PosOrderAccounting.
+        // _computeAllPrices() adds them itself after calling the same helper.
+        // priceIncl/totalDue/roundedPriceIncl read these fields off
+        // `prices.taxDetails`, so skipping this step leaves priceIncl
+        // `undefined` for any order with an active manual discount, which
+        // then serializes as NaN into amount_total on sync. The old
+        // order_total/order_remaining/order_rounding/order_has_zero_remaining
+        // fields computed here previously were Odoo 18 leftovers: nothing in
+        // Odoo 19 reads them anymore (remainingDue/change/orderHasZeroRemaining
+        // are now derived live from totalDue/amountPaid), so they are dropped
+        // instead of carried forward as dead weight.
         taxTotals.order_sign = documentSign;
-        taxTotals.order_total =
+        taxTotals.total_amount_no_rounding =
             taxTotals.total_amount_currency - (taxTotals.cash_rounding_base_amount_currency || 0.0);
-
-        let order_rounding = 0;
-        let remaining = taxTotals.order_total;
-        const validPayments = this.payment_ids.filter((p) => p.is_done() && !p.is_change);
-        for (const [payment, isLast] of validPayments.map((p, i) => [
-            p,
-            i === validPayments.length - 1,
-        ])) {
-            const paymentAmount = documentSign * payment.get_amount();
-            if (isLast) {
-                if (this.config.cash_rounding) {
-                    const roundedRemaining = this.getRoundedRemaining(
-                        this.config.rounding_method,
-                        remaining
-                    );
-                    if (!floatIsZero(paymentAmount - remaining, this.currency.decimal_places)) {
-                        order_rounding = roundedRemaining - remaining;
-                    }
-                }
-            }
-            remaining -= paymentAmount;
-        }
-
-        taxTotals.order_rounding = order_rounding;
-        taxTotals.order_remaining = remaining;
-        const remaining_with_rounding = remaining + order_rounding;
-        taxTotals.order_has_zero_remaining = floatIsZero(
-            remaining_with_rounding,
-            currency.decimal_places
-        );
         return taxTotals;
     },
 
@@ -636,7 +625,7 @@ patch(PosOrder.prototype, {
                     manual: false,
                 };
             }
-            grouped[key].amount += Math.abs(line.get_base_price());
+            grouped[key].amount += Math.abs(line.basePrice);
             grouped[key].lines.push(line);
         }
         for (const discount of effectiveManuals) {
@@ -663,17 +652,35 @@ patch(PosOrder.prototype, {
         return taxTotals;
     },
 
+    // Odoo 19 removed the standalone `taxTotals` getter: every consumer
+    // (receipt, cart summary, priceIncl/priceExcl) now reads
+    // `order.prices.taxDetails` instead (see the `prices` override below,
+    // which is what actually makes the manual global discount affect the
+    // amount due). This getter is kept as a read-only alias so the rest of
+    // this module (and l10n_ve_loyalty_pos's control_buttons/order_widget
+    // overrides) can keep referring to `order.taxTotals`.
     get taxTotals() {
+        return this.prices.taxDetails;
+    },
+
+    get prices() {
+        const base = super.prices;
         if (!this._l10nVeCompanyIsVenezuela()) {
-            return super.taxTotals;
+            return base;
         }
         const manuals = this._l10nVeGetManualGlobalDiscounts();
         if (!manuals.length) {
-            return this._l10nVeEnrichTaxTotalsWithDiscountDisplay(super.taxTotals, []);
+            return {
+                ...base,
+                taxDetails: this._l10nVeEnrichTaxTotalsWithDiscountDisplay(base.taxDetails, []),
+            };
         }
         const effective = this._l10nVeSyncEffectiveManualGlobalDiscounts();
         const taxTotals = this._l10nVeComputeTaxTotalsWithManualDiscounts();
-        return this._l10nVeEnrichTaxTotalsWithDiscountDisplay(taxTotals, effective);
+        return {
+            ...base,
+            taxDetails: this._l10nVeEnrichTaxTotalsWithDiscountDisplay(taxTotals, effective),
+        };
     },
 
     _l10nVeApplyManualGlobalDiscount({
@@ -748,9 +755,7 @@ patch(PosOrder.prototype, {
                 continue;
             }
             if (this._l10nVeIsGlobalDiscountLine(line)) {
-                amount += Math.abs(
-                    Number(line.get_price_without_tax?.() ?? line.price_subtotal ?? 0)
-                );
+                amount += Math.abs(Number(line.priceExcl));
             }
         }
         for (const discount of this._l10nVeGetEffectiveManualGlobalDiscounts()) {
