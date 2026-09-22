@@ -22,6 +22,13 @@ class TestDailyPaymentsReport(TestAccountReportsCommon):
 
     def test_validation_date_falls_back_to_move_date(self):
         move = self.init_invoice("out_invoice", amounts=[100.0], post=True)
+        if "l10n_ve_process_date" in move._fields:
+            # When l10n_ve_seniat is also installed (this file runs in both the
+            # generic-only and the VE test databases), posting auto-populates
+            # this field; clear it so the assertion exercises the "no process
+            # date set" fallback path shared by both the generic hook and the
+            # VE override.
+            move.l10n_ve_process_date = False
         self.assertEqual(
             self.handler._get_move_validation_date(move),
             move.date,
