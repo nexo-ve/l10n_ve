@@ -9,7 +9,6 @@ class IrUiMenu(models.Model):
         return {
             "fiscal_machine": (
                 "l10n_ve_fiscal_serial.menu_seniat_fiscal_machines",
-                "l10n_ve_reports.menu_seniat_report_sales_book_fiscal_machine",
             ),
         }
 
