@@ -768,8 +768,11 @@ class AccountReport(models.Model):
         elif period_type == "today":
             anchor = fields.Date.from_string(period_vals["date_to"])
             new_date = anchor + relativedelta(days=periods)
-            if mode == "single":
-                return self._get_dates_period(new_date, new_date, mode, period_type="today")
+            # A shifted 'today' period always anchors date_from at the fiscal
+            # year start, in both single and range mode. This matches
+            # Enterprise's behavior and keeps the annotations domain and the
+            # journal-items drill-down from collapsing to a single day when
+            # the user clicks the day-navigation arrows.
             date_from = self.env.company.compute_fiscalyear_dates(new_date)["date_from"]
             return self._get_dates_period(
                 date_from, new_date, mode, period_type="today"
@@ -906,12 +909,9 @@ class AccountReport(models.Model):
                 isinstance(options_filter, str) and options_filter.endswith("_today")
             ):
                 date_to = fields.Date.context_today(self)
-                if options_mode == "single":
-                    date_from = date_to
-                else:
-                    date_from = self.env.company.compute_fiscalyear_dates(date_to)[
-                        "date_from"
-                    ]
+                date_from = self.env.company.compute_fiscalyear_dates(date_to)[
+                    "date_from"
+                ]
                 period_type = "today"
             elif "month" in options_filter:
                 date_from, date_to = date_utils.get_month(
@@ -954,6 +954,7 @@ class AccountReport(models.Model):
             period_type=period_type,
         )
 
+        anchor_day = None
         if any(option in options_filter for option in ["previous", "next"]):
             anchor_day = fields.Date.context_today(self)
             if (
@@ -992,11 +993,20 @@ class AccountReport(models.Model):
                 shift_periods,
                 tax_period="tax_period" in options_filter,
             )
+            if options["date"] is not None:
+                # This line is useful for the export, tax closing, and the
+                # day-navigation UI so that the period offset is remembered
+                # in the options.
+                options["date"]["period"] = shift_periods
 
-        if options.get("date", {}).get("period_type") == "today" and options[
-            "date"
-        ].get("date_to"):
-            anchor_day = fields.Date.context_today(self)
+        if (
+            options.get("date", {}).get("period_type") == "today"
+            and isinstance(options_filter, str)
+            and options_filter.endswith("_today")
+            and options["date"].get("date_to")
+        ):
+            if anchor_day is None:
+                anchor_day = fields.Date.context_today(self)
             dt_to = fields.Date.from_string(options["date"]["date_to"])
             options["date"]["period"] = (dt_to - anchor_day).days
 

@@ -997,6 +997,65 @@ class TestAccountReportsFilters(TestAccountReportsCommon, odoo.tests.HttpCase):
             ],
         )
 
+    @freeze_time("2017-12-30")
+    def test_filter_date_today_day_navigation(self):
+        """Test the fork-specific '_today' day-navigation filters
+        (this_today/previous_today/next_today). These back the 'Day' single-date
+        filter's previous/next arrows in filters.js (dateFilters('single') offers
+        {period: 'today'}, and getDateFilter()/initDateFilters() read/write
+        options.date.period for it) and l10n_ve_reports_seniat's Reporte X
+        (options["date"]["filter"] = "this_today").
+
+        CONTRACT: day navigation moves 'date_to' by one day at a time while
+        keeping 'date_from' anchored at the fiscal year start (matching
+        Enterprise's 'today' period semantics), and it carries the
+        accumulated day offset in 'period' so the UI arrows can keep
+        clicking from where they left off."""
+        self._assert_filter_date(
+            self.single_date_report,
+            {"date": {"filter": "this_today", "mode": "single"}},
+            {
+                "string": "As of %s" % format_date(self.env, "2017-12-30"),
+                "period_type": "today",
+                "mode": "single",
+                "filter": "this_today",
+                "period": 0,
+                "date_from": "2017-01-01",
+                "date_to": "2017-12-30",
+                "currency_table_period_key": "None_2017-12-30",
+            },
+        )
+
+        self._assert_filter_date(
+            self.single_date_report,
+            {"date": {"filter": "previous_today", "mode": "single"}},
+            {
+                "string": "As of %s" % format_date(self.env, "2017-12-29"),
+                "period_type": "today",
+                "mode": "single",
+                "filter": "previous_today",
+                "period": -1,
+                "date_from": "2017-01-01",
+                "date_to": "2017-12-29",
+                "currency_table_period_key": "None_2017-12-29",
+            },
+        )
+
+        self._assert_filter_date(
+            self.single_date_report,
+            {"date": {"filter": "next_today", "mode": "single"}},
+            {
+                "string": "As of %s" % format_date(self.env, "2017-12-31"),
+                "period_type": "today",
+                "mode": "single",
+                "filter": "next_today",
+                "period": 1,
+                "date_from": "2017-01-01",
+                "date_to": "2017-12-31",
+                "currency_table_period_key": "None_2017-12-31",
+            },
+        )
+
     @freeze_time("2017-12-31")
     def test_filter_date_month_single(self):
         """Test the filter_date with 'this_month'/'last_month' in 'single' mode."""
