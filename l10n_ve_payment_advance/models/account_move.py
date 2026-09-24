@@ -129,63 +129,13 @@ class AccountMove(models.Model):
                 )
         lines |= lines_payment
 
-        _logger.info(
-            "l10n_ve_payment_advance: factura %s partner %s cuenta %s (%s) | "
-            "candidatos partner=%s sin_partner=%s pagos=%s total=%s",
-            self.name,
-            partner.id,
-            advance_account.code,
-            advance_account.id,
-            len(lines_partner),
-            len(lines_no_partner),
-            len(payments),
-            len(lines),
-        )
-
         result = self.env["account.move.line"]
         for line in lines:
-            reasons = []
             if not self._is_open_advance_line(line, advance_account):
-                if line.account_id != advance_account:
-                    reasons.append("cuenta_distinta")
-                elif not self._line_has_advance_residual(line):
-                    reasons.append("sin_saldo_ni_residual")
-                else:
-                    reasons.append("no_es_anticipo_abierto")
-            if not self._line_belongs_to_invoice_partner(line, partner):
-                reasons.append("partner_no_coincide")
-            if reasons:
-                _logger.info(
-                    "l10n_ve_payment_advance:   descartada aml=%s move=%s "
-                    "balance=%s residual=%s credit=%s debit=%s partner=%s "
-                    "move_partner=%s reconcile_account=%s | %s",
-                    line.id,
-                    line.move_id.name,
-                    line.balance,
-                    line.amount_residual,
-                    line.credit,
-                    line.debit,
-                    line.partner_id.id,
-                    line.move_id.partner_id.id,
-                    line.account_id.reconcile,
-                    ", ".join(reasons),
-                )
                 continue
-            _logger.info(
-                "l10n_ve_payment_advance:   incluida aml=%s move=%s balance=%s "
-                "residual=%s amount_currency=%s",
-                line.id,
-                line.move_id.name,
-                line.balance,
-                line.amount_residual,
-                self._get_advance_line_amount_in_currency(line, self.currency_id),
-            )
+            if not self._line_belongs_to_invoice_partner(line, partner):
+                continue
             result |= line
-        _logger.info(
-            "l10n_ve_payment_advance: factura %s anticipos incluidos=%s",
-            self.name,
-            len(result),
-        )
         return result
 
     def _l10n_ve_should_show_advances_widget(self):
@@ -201,14 +151,6 @@ class AccountMove(models.Model):
             move.invoice_has_outstanding_advances = False
             move.invoice_outstanding_advances_widget = False
             if not move._l10n_ve_should_show_advances_widget():
-                _logger.info(
-                    "l10n_ve_payment_advance: factura %s sin widget | state=%s "
-                    "payment_state=%s move_type=%s",
-                    move.name,
-                    move.state,
-                    move.payment_state,
-                    move.move_type,
-                )
                 continue
             move.invoice_show_advances_widget = True
             advance_account = move._get_partner_advance_account()
@@ -221,15 +163,6 @@ class AccountMove(models.Model):
                     "l10n_ve_payment_advance: factura %s partner %s sin cuenta anticipos",
                     move.name,
                     move.commercial_partner_id.id,
-                )
-            else:
-                _logger.info(
-                    "l10n_ve_payment_advance: factura %s cuenta anticipos %s (%s) "
-                    "reconcile=%s",
-                    move.name,
-                    advance_account.code,
-                    advance_account.id,
-                    advance_account.reconcile,
                 )
             widget_vals = {
                 "outstanding": True,
@@ -244,11 +177,6 @@ class AccountMove(models.Model):
                         line, move.currency_id
                     )
                     if move.currency_id.is_zero(amount):
-                        _logger.info(
-                            "l10n_ve_payment_advance:   aml=%s importe cero en %s",
-                            line.id,
-                            move.currency_id.name,
-                        )
                         continue
                     widget_vals["content"].append(
                         {
