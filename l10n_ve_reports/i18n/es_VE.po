@@ -1375,7 +1375,7 @@ msgstr "Utilidades No Asignadas del Año Actual"
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_executivesummary_ca_to_l0
 msgid "Current assets to liabilities"
-msgstr "Actual activos hasta pasivos"
+msgstr "Activos corrientes sobre pasivos"
 
 #. module: l10n_ve_reports
 #. odoo-javascript
@@ -2135,17 +2135,17 @@ msgstr "Red"
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_gross_profit0
 msgid "Gross Profit"
-msgstr "Gross Ganancia"
+msgstr "Utilidad Bruta"
 
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_executivesummary_gross_profit0
 msgid "Gross profit"
-msgstr "Gross ganancia"
+msgstr "Utilidad bruta"
 
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_executivesummary_gpmargin0
 msgid "Gross profit margin (gross profit / operating income)"
-msgstr "Gross ganancia margen (gross ganancia / operating ingreso)"
+msgstr "Margen bruto (utilidad bruta / ingresos operativos)"
 
 #. module: l10n_ve_reports
 #: model_terms:ir.ui.view,arch_db:l10n_ve_reports.account_report_line_form
@@ -2874,23 +2874,23 @@ msgstr "Nombre hasta give hasta el generado documentos."
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_executivesummary_profit0
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_net_profit0
 msgid "Net Profit"
-msgstr "Net Ganancia"
+msgstr "Utilidad Neta"
 
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_executivesummary_net_assets0
 msgid "Net assets"
-msgstr "Net activos"
+msgstr "Activos netos"
 
 #. module: l10n_ve_reports
 #. odoo-python
 #: code:addons/l10n_ve_reports/models/account_cash_flow_report.py:0
 msgid "Net increase in cash and cash equivalents"
-msgstr "Net increase en efectivo y efectivo equivalents"
+msgstr "Aumento neto de efectivo y equivalentes de efectivo"
 
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_executivesummary_npmargin0
 msgid "Net profit margin (net profit / revenue)"
-msgstr "Net ganancia margen (net ganancia / ingreso)"
+msgstr "Margen neto (utilidad neta / ingresos)"
 
 #. module: l10n_ve_reports
 #. odoo-javascript
@@ -3086,7 +3086,7 @@ msgstr "Abierto adjunto en pop out"
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_operating_income0
 msgid "Operating Income (or Loss)"
-msgstr "Operating Ingreso (o Pérdida)"
+msgstr "Utilidad (o Pérdida) Operativa"
 
 #. module: l10n_ve_reports
 #. odoo-javascript
@@ -3330,22 +3330,22 @@ msgstr ""
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_fixed_assets_view0
 msgid "Plus Fixed Assets"
-msgstr "Plus Fixed Activos"
+msgstr "Más Activos Fijos"
 
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_non_current_assets_view0
 msgid "Plus Non-current Assets"
-msgstr "Plus Non-actual Activos"
+msgstr "Más Activos No Corrientes"
 
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_non_current_liabilities0
 msgid "Plus Non-current Liabilities"
-msgstr "Plus Non-actual Pasivos"
+msgstr "Más Pasivos No Corrientes"
 
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_other_income0
 msgid "Plus Other Income"
-msgstr "Plus Otro Ingreso"
+msgstr "Más Otros Ingresos"
 
 #. module: l10n_ve_reports
 #: model:account.report.column,name:l10n_ve_reports.sales_book_report_third_party_name
@@ -3559,13 +3559,13 @@ msgstr "Ganancias retenidas"
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_executivesummary_return_investment0
 msgid "Return on investments (net profit / assets)"
-msgstr "Devolución en investments (net ganancia / activos)"
+msgstr "Rendimiento sobre activos (utilidad neta / activos)"
 
 #. module: l10n_ve_reports
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_executivesummary_income0
 #: model:account.report.line,name:l10n_ve_reports.account_financial_report_revenue0
 msgid "Revenue"
-msgstr "Ingreso"
+msgstr "Ingresos"
 
 #. module: l10n_ve_reports
 #: model_terms:ir.ui.view,arch_db:l10n_ve_reports.view_account_report_search
@@ -4035,7 +4035,7 @@ msgstr ""
 #. odoo-javascript
 #: code:addons/l10n_ve_reports/static/src/components/bank_reconciliation_report/warnings.xml:0
 msgid "The current balance in the"
-msgstr "El actual saldo en el"
+msgstr "El saldo actual en el"
 
 #. module: l10n_ve_reports
 #. odoo-python
