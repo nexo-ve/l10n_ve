@@ -283,13 +283,16 @@ class AccountMoveLine(models.Model):
             return
 
         if len(self.tax_ids) == 0:
+            company = self.move_id.company_id
             if self.move_id.move_type in ("out_invoice", "out_refund", "out_receipt"):
-                self.tax_ids = [Command.link(self.env.company.account_sale_tax_id.id)]
-                self.move_id.message_post(
-                    body=_("Added default sales tax to line: %s.") % self.name
-                )
+                sale_tax = company.account_sale_tax_id
+                if sale_tax:
+                    self.tax_ids = [Command.link(sale_tax.id)]
+                    self.move_id.message_post(
+                        body=_("Added default sales tax to line: %s.") % self.name
+                    )
 
             if self.move_id.move_type in ("in_invoice", "in_refund", "in_receipt"):
-                self.tax_ids = [
-                    Command.link(self.env.company.account_purchase_tax_id.id)
-                ]
+                purchase_tax = company.account_purchase_tax_id
+                if purchase_tax:
+                    self.tax_ids = [Command.link(purchase_tax.id)]
